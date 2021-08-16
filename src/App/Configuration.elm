@@ -81,9 +81,9 @@ type alias Service =
     , clusterId : Int
     , scalingTarget : Int
     , packingStrategy : PackingStrategy
-    , minTasks : Int
-    , maxTasks : Int
-    , nominalTasks: Int
+    , minPods : Int
+    , maxPods : Int
+    , nominalPods: Int
     }
 
 
@@ -125,7 +125,7 @@ update msg model =
             { model | clusters = model.clusters |> Dict.insert model.autoIncrement { name = "Cluster"}, autoIncrement = generateId model }
 
         AddService clusterId ->
-            { model | services = model.services |> Dict.insert model.autoIncrement { name = "Service", clusterId = clusterId, scalingTarget = 0, packingStrategy = ByCPUShares, minTasks = 1, maxTasks = 2, nominalTasks = 1 }, autoIncrement = generateId model }
+            { model | services = model.services |> Dict.insert model.autoIncrement { name = "Service", clusterId = clusterId, scalingTarget = 0, packingStrategy = ByCPUShares, minPods = 1, maxPods = 2, nominalPods = 1 }, autoIncrement = generateId model }
 
         AddContainer serviceId ->
             let
@@ -267,17 +267,17 @@ viewServiceItem model serviceTuple =
                     ]
                 ]
           ]
-        , viewTaskItem id
+        , viewPodItem id
         , viewContainers (getContainers id model.containers)
         ]
 
 
-viewTaskItem : Int -> List (ListGroup.CustomItem Msg)
-viewTaskItem id =
+viewPodItem : Int -> List (ListGroup.CustomItem Msg)
+viewPodItem id =
     [ ListGroup.anchor
-        [ ListGroup.attrs [ Flex.block, Flex.justifyBetween, style "padding-left" "40px", href ("task/" ++ String.fromInt id) ] ]
+        [ ListGroup.attrs [ Flex.block, Flex.justifyBetween, style "padding-left" "40px", href ("pod/" ++ String.fromInt id) ] ]
         [ div [ Flex.block, Flex.justifyBetween, Size.w100 ]
-            [ span [ class "pt-1" ] [ FeatherIcons.clipboard |> FeatherIcons.withSize 19 |> FeatherIcons.toHtml [], text "Tasks" ]
+            [ span [ class "pt-1" ] [ FeatherIcons.clipboard |> FeatherIcons.withSize 19 |> FeatherIcons.toHtml [], text "Pods" ]
             , span [] [ Button.button [ Button.outlineSecondary, Button.small, Button.attrs [ Html.Events.Extra.onClickPreventDefaultAndStopPropagation (AddContainer id) ] ] [ FeatherIcons.plus |> FeatherIcons.withSize 16 |> FeatherIcons.withClass "empty-button" |> FeatherIcons.toHtml [], text "" ] ]
             ]
         ]

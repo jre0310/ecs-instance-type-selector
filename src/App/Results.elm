@@ -243,4 +243,4 @@ convertToRepeatedBox services (id, container) =
                 App.Configuration.ByCPUShares -> cpuShare
                 App.Configuration.ByMemory -> memory
     in
-    List.repeat service.nominalTasks (Box id container.name service.name container.color 0 0 cpuShare memory sortValue)
+    List.repeat service.nominalPods (Box id container.name service.name container.color 0 0 cpuShare memory sortValue)
