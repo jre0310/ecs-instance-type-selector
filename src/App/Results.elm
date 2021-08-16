@@ -1,7 +1,7 @@
 module App.Results exposing (..)
 
 import App.Configuration as Configuration
-import App.Daemon as Daemon exposing (sumDaemonResources, daemonsForContainer)
+import App.Daemon as Daemon exposing (sumDaemonResources, daemonsForNode)
 import App.Util as Util
 import App.Instances as Instances exposing (Instance, Instances, isSuitableInstance)
 import App.Visualization exposing (..)
@@ -29,7 +29,7 @@ type alias Model =
     }
 
 
-type alias ContainerData =
+type alias NodeData =
     { name : String
     , color: String
     }
@@ -60,8 +60,8 @@ getSuggestedInstances: Model -> List Instance
 getSuggestedInstances model =
     let
         services = model.configuration.services
-        containers = model.configuration.containers
-        boxes = convertToBoxes services containers
+        nodes = model.configuration.nodes
+        boxes = convertToBoxes services nodes
         visualization = prepareVisualization boxes 
         share = round <| visualization.width
         memory = round <| visualization.height
@@ -88,12 +88,12 @@ viewResultsForService : Model -> Html msg
 viewResultsForService model =
     let
         services = model.configuration.services
-        containers = model.configuration.containers
-        boxes = convertToBoxes services containers
+        nodes = model.configuration.nodes
+        boxes = convertToBoxes services nodes
         visualization = prepareVisualization boxes 
         share = round <| visualization.width / 1024
         memory = round <| visualization.height
-        showSuggestions = (Dict.isEmpty model.configuration.containers == False)
+        showSuggestions = (Dict.isEmpty model.configuration.nodes == False)
         suggestions = getSuggestedInstances model
         visualizations = List.map
                         (\instance ->
@@ -222,25 +222,25 @@ viewReservedAllNoUpFront rateCode hourlyCost contractLength =
         ]
 
 
-convertToBoxes : Configuration.Services -> Configuration.Containers -> List Box 
-convertToBoxes services containers =
+convertToBoxes : Configuration.Services -> Configuration.Nodes -> List Box 
+convertToBoxes services nodes =
     let
-        containersList = Dict.toList containers
+        nodesList = Dict.toList nodes
 
-        initialBoxes = List.concatMap (convertToRepeatedBox services) containersList
+        initialBoxes = List.concatMap (convertToRepeatedBox services) nodesList
     in
     initialBoxes
 
 
-convertToRepeatedBox : Configuration.Services -> (Int, Configuration.Container) -> List Box
-convertToRepeatedBox services (id, container) =
+convertToRepeatedBox : Configuration.Services -> (Int, Configuration.Node) -> List Box
+convertToRepeatedBox services (id, node) =
     let
-        service = Dict.get container.serviceId services |> Maybe.withDefault (Configuration.Service "" 0 0 App.Configuration.ByCPUShares 0 0 0)
-        cpuShare = (toFloat container.cpuShare)
-        memory = (toFloat container.memory)
+        service = Dict.get node.serviceId services |> Maybe.withDefault (Configuration.Service "" 0 0 App.Configuration.ByCPUShares 0 0 0)
+        cpuShare = (toFloat node.cpuShare)
+        memory = (toFloat node.memory)
         sortValue =
             case service.packingStrategy of
                 App.Configuration.ByCPUShares -> cpuShare
                 App.Configuration.ByMemory -> memory
     in
-    List.repeat service.nominalPods (Box id container.name service.name container.color 0 0 cpuShare memory sortValue)
+    List.repeat service.nominalPods (Box id node.name service.name node.color 0 0 cpuShare memory sortValue)

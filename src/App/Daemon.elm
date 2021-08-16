@@ -1,4 +1,4 @@
-module App.Daemon exposing (Model, Msg(..), update, view, sumDaemonResources, daemonsForContainer)
+module App.Daemon exposing (Model, Msg(..), update, view, sumDaemonResources, daemonsForNode)
 
 import App.Configuration as Configuration
 import App.Util as Util
@@ -36,25 +36,25 @@ update msg model =
         UpdateMemory daemonid val ->
             { model | daemons = Dict.update daemonid (Maybe.map (\daemon -> {daemon | memory = Util.toInt val})) model.daemons}
 
-daemonsForContainer : Configuration.Daemons -> Int -> List (Int, Configuration.Daemon)
-daemonsForContainer daemons containerid =
+daemonsForNode : Configuration.Daemons -> Int -> List (Int, Configuration.Daemon)
+daemonsForNode daemons nodeid =
     let
-        filtered = Dict.filter (\_ daemon -> daemon.containerId == containerid) daemons
+        filtered = Dict.filter (\_ daemon -> daemon.nodeId == nodeid) daemons
     in
         Dict.toList filtered
 
--- sumDeamonResources: allDaemons, containerId -> (cpuShares, memory)
+-- sumDeamonResources: allDaemons, nodeId -> (cpuShares, memory)
 sumDaemonResources : Configuration.Daemons -> Int -> (Int, Int)
-sumDaemonResources allDaemons containerId =
+sumDaemonResources allDaemons nodeId =
     let
-        daemons = daemonsForContainer allDaemons containerId
+        daemons = daemonsForNode allDaemons nodeId
         cpuShares = List.sum (List.map (\daemonTuple -> (Tuple.second daemonTuple).cpuShare) daemons)
         memory = List.sum (List.map (\daemonTuple -> (Tuple.second daemonTuple).memory) daemons)
     in
         (cpuShares, memory)
 
-viewDaemon : Configuration.Container -> (Int, Configuration.Daemon) -> Html Msg
-viewDaemon container (daemonid, daemon) = 
+viewDaemon : Configuration.Node -> (Int, Configuration.Daemon) -> Html Msg
+viewDaemon node (daemonid, daemon) = 
         Card.config [ Card.attrs [Html.Attributes.class "mt-3"]]
         |> Card.header [] [ Html.map ConfigurationMsg (input [ type_ "text", class "editable-label", value daemon.name, onChange (Configuration.ChangeDaemonName daemonid)] [])
         , Html.map ConfigurationMsg (span [ class "ml-3 text-muted float-right clickable", Html.Events.Extra.onClickPreventDefaultAndStopPropagation (Configuration.DeleteDaemon daemonid) ] [ FeatherIcons.trash2 |> FeatherIcons.withSize 16 |> FeatherIcons.toHtml [] ]) ]
@@ -62,25 +62,25 @@ viewDaemon container (daemonid, daemon) =
             [ Block.custom <|
                 Form.form []
                     -- these Util calls are a bit odd, but do make the code a bit more organized.
-                    [ Util.viewFormRowSlider "CPU Share" ((String.fromInt <| daemon.cpuShare) ++ "/" ++ (container.cpuShare |> String.fromInt) ++ " CPU Share") daemon.cpuShare 0 container.cpuShare 2 (UpdateCPUShare daemonid)
+                    [ Util.viewFormRowSlider "CPU Share" ((String.fromInt <| daemon.cpuShare) ++ "/" ++ (node.cpuShare |> String.fromInt) ++ " CPU Share") daemon.cpuShare 0 node.cpuShare 2 (UpdateCPUShare daemonid)
                     , hr [] []
-                    , Util.viewFormRowSlider "Memory" (Util.formatMegabytes daemon.memory ++ "/"  ++ Util.formatMegabytes container.memory) daemon.memory 50 container.memory 50 (UpdateMemory daemonid)
+                    , Util.viewFormRowSlider "Memory" (Util.formatMegabytes daemon.memory ++ "/"  ++ Util.formatMegabytes node.memory) daemon.memory 50 node.memory 50 (UpdateMemory daemonid)
                     ]
             ]
         |> Card.view
 
 
-view : Configuration.Daemons -> Int -> Configuration.Container -> Html Msg
-view daemons containerId container = 
+view : Configuration.Daemons -> Int -> Configuration.Node -> Html Msg
+view daemons nodeId node = 
     let
-        kvPairs = daemonsForContainer daemons containerId
-        data = List.map (viewDaemon container) kvPairs
+        kvPairs = daemonsForNode daemons nodeId
+        data = List.map (viewDaemon node) kvPairs
     in
         div [] [ Html.map ConfigurationMsg (
                     Button.button [ 
                             Button.outlineSecondary, Button.small, Button.attrs [ 
                                     Html.Events.Extra.onClickPreventDefaultAndStopPropagation (
-                                            Configuration.AddDaemon containerId
+                                            Configuration.AddDaemon nodeId
                                         ) 
                                     ] 
                                 ]

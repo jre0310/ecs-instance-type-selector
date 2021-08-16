@@ -1,4 +1,4 @@
-module App.Configuration exposing (Cluster, Container, Containers, Services, Daemon, Daemons, Model, Msg(..), PackingStrategy(..), Service, Clusters, PricingFilter(..), getContainers, init, update, view)
+module App.Configuration exposing (Cluster, Node, Nodes, Services, Daemon, Daemons, Model, Msg(..), PackingStrategy(..), Service, Clusters, PricingFilter(..), getNodes, init, update, view)
 
 -- This is probably the only real "messy" file, could do with some refactoring and clean up
 
@@ -21,7 +21,7 @@ init : Model
 init =
     { clusters = Dict.fromList [ ( 0, { name = "Cluster" } ) ]
     , services = Dict.fromList [ ] 
-    , containers = Dict.fromList [ ] 
+    , nodes = Dict.fromList [ ] 
     , daemons = Dict.fromList [ ]
     , autoIncrement = 0 -- Set this to 0 once we get rid of sample data
     }
@@ -35,8 +35,8 @@ type alias Clusters =
     Dict Int Cluster
 
 
-type alias Containers =
-    Dict Int Container
+type alias Nodes =
+    Dict Int Node
 
 type alias Daemons = 
     Dict Int Daemon
@@ -45,7 +45,7 @@ type alias Daemons =
 type alias Model =
     { clusters : Clusters
     , services : Services
-    , containers : Containers
+    , nodes : Nodes
     , daemons: Daemons
     , autoIncrement : Int
     }
@@ -54,13 +54,13 @@ type alias Model =
 type Msg
     = AddCluster
     | AddService Int -- ClusterId
-    | AddContainer Int -- ServiceId
-    | AddDaemon Int -- ContainerId
-    | DeleteContainer Int -- ContainerId
+    | AddNode Int -- ServiceId
+    | AddDaemon Int -- NodeId
+    | DeleteNode Int -- NodeId
     | DeleteService Int -- ServiceId
     | DeleteCluster Int -- ClusterId
     | DeleteDaemon Int -- DaemonId
-    | ChangeContainerName Int String -- ContainerId Name
+    | ChangeNodeName Int String -- NodeId Name
     | ChangeDaemonName Int String -- DaemonId Name
     | ChangeServiceName Int String -- ServiceId Name
     | ChangeClusterName Int String -- ClusterId Name
@@ -92,7 +92,7 @@ type PackingStrategy
     | ByMemory
 
 
-type alias Container =
+type alias Node =
     { name : String
     , color : String
     , serviceId : Int
@@ -109,7 +109,7 @@ type alias Daemon =
     { memory: Int
     , cpuShare: Int
     , name: String
-    , containerId: Int
+    , nodeId: Int
     }
 
 
@@ -127,20 +127,20 @@ update msg model =
         AddService clusterId ->
             { model | services = model.services |> Dict.insert model.autoIncrement { name = "Service", clusterId = clusterId, scalingTarget = 0, packingStrategy = ByCPUShares, minPods = 1, maxPods = 2, nominalPods = 1 }, autoIncrement = generateId model }
 
-        AddContainer serviceId ->
+        AddNode serviceId ->
             let
-                containerId = generateId model
+                nodeId = generateId model
                 daemonId = generateId model
-                daemons = model.daemons |> Dict.insert daemonId {name = "Daemon", containerId = containerId, cpuShare = 0, memory = 0}
+                daemons = model.daemons |> Dict.insert daemonId {name = "Daemon", nodeId = nodeId, cpuShare = 0, memory = 0}
             in
             
-            { model | containers = model.containers |> Dict.insert containerId { name = "Container", color = Util.randomColorString (Random.initialSeed model.autoIncrement), serviceId = serviceId, cpuShare = 128, memory = 4000, ioops = 128, useEBS = True, bandwidth = 20, showExtraMemory = False }, daemons = daemons, autoIncrement = containerId + 1 }
+            { model | nodes = model.nodes |> Dict.insert nodeId { name = "Node", color = Util.randomColorString (Random.initialSeed model.autoIncrement), serviceId = serviceId, cpuShare = 128, memory = 4000, ioops = 128, useEBS = True, bandwidth = 20, showExtraMemory = False }, daemons = daemons, autoIncrement = nodeId + 1 }
 
-        AddDaemon containerId -> 
-            { model | daemons = model.daemons |> Dict.insert model.autoIncrement {name = "Daemon", containerId = containerId, cpuShare = 0, memory = 0}, autoIncrement = generateId model }
+        AddDaemon nodeId -> 
+            { model | daemons = model.daemons |> Dict.insert model.autoIncrement {name = "Daemon", nodeId = nodeId, cpuShare = 0, memory = 0}, autoIncrement = generateId model }
 
-        DeleteContainer containerId ->
-            { model | containers = model.containers |> Dict.remove containerId }
+        DeleteNode nodeId ->
+            { model | nodes = model.nodes |> Dict.remove nodeId }
 
         DeleteDaemon daemonId -> 
             { model | daemons = model.daemons |> Dict.remove daemonId }
@@ -148,7 +148,7 @@ update msg model =
         DeleteService serviceId ->
             let
                 newModel =
-                    { model | containers = model.containers |> Dict.Extra.removeWhen (\_ container -> container.serviceId == serviceId) }
+                    { model | nodes = model.nodes |> Dict.Extra.removeWhen (\_ node -> node.serviceId == serviceId) }
             in
             { newModel | services = model.services |> Dict.remove serviceId }
 
@@ -161,16 +161,16 @@ update msg model =
                 serviceIdsToRemove =
                     servicesToRemove |> Dict.keys
 
-                newContainers =
-                    model.containers |> Dict.Extra.removeWhen (\_ container -> List.length (List.filter (\item -> item == container.serviceId) serviceIdsToRemove) > 0)
+                newNodes =
+                    model.nodes |> Dict.Extra.removeWhen (\_ node -> List.length (List.filter (\item -> item == node.serviceId) serviceIdsToRemove) > 0)
 
                 newServices =
                     model.services |> Dict.Extra.removeWhen (\_ service -> service.clusterId == clusterId)
             in
-            { model | containers = newContainers, services = newServices, clusters = model.clusters |> Dict.remove clusterId }
+            { model | nodes = newNodes, services = newServices, clusters = model.clusters |> Dict.remove clusterId }
 
-        ChangeContainerName id value ->
-            { model | containers = Dict.update id (Maybe.map (\container -> { container | name = value })) model.containers }
+        ChangeNodeName id value ->
+            { model | nodes = Dict.update id (Maybe.map (\node -> { node | name = value })) model.nodes }
 
         ChangeDaemonName id value -> 
             { model | daemons = Dict.update id (Maybe.map (\daemon -> { daemon | name = value })) model.daemons}
@@ -268,7 +268,7 @@ viewServiceItem model serviceTuple =
                 ]
           ]
         , viewPodItem id
-        , viewContainers (getContainers id model.containers)
+        , viewNodes (getNodes id model.nodes)
         ]
 
 
@@ -278,43 +278,43 @@ viewPodItem id =
         [ ListGroup.attrs [ Flex.block, Flex.justifyBetween, style "padding-left" "40px", href ("pod/" ++ String.fromInt id) ] ]
         [ div [ Flex.block, Flex.justifyBetween, Size.w100 ]
             [ span [ class "pt-1" ] [ FeatherIcons.clipboard |> FeatherIcons.withSize 19 |> FeatherIcons.toHtml [], text "Pods" ]
-            , span [] [ Button.button [ Button.outlineSecondary, Button.small, Button.attrs [ Html.Events.Extra.onClickPreventDefaultAndStopPropagation (AddContainer id) ] ] [ FeatherIcons.plus |> FeatherIcons.withSize 16 |> FeatherIcons.withClass "empty-button" |> FeatherIcons.toHtml [], text "" ] ]
+            , span [] [ Button.button [ Button.outlineSecondary, Button.small, Button.attrs [ Html.Events.Extra.onClickPreventDefaultAndStopPropagation (AddNode id) ] ] [ FeatherIcons.plus |> FeatherIcons.withSize 16 |> FeatherIcons.withClass "empty-button" |> FeatherIcons.toHtml [], text "" ] ]
             ]
         ]
     ]
 
 
-getContainers : Int -> Containers -> Containers
-getContainers serviceId containers =
+getNodes : Int -> Nodes -> Nodes
+getNodes serviceId nodes =
     let
-        associateContainer _ container =
-            if container.serviceId == serviceId then
-                Just container
+        associateNode _ node =
+            if node.serviceId == serviceId then
+                Just node
 
             else
                 Nothing
     in
-    containers |> filterMap associateContainer
+    nodes |> filterMap associateNode
 
 
-viewContainers : Containers -> List (ListGroup.CustomItem Msg)
-viewContainers containers =
-    List.map viewContainerItem (Dict.toList containers)
+viewNodes : Nodes -> List (ListGroup.CustomItem Msg)
+viewNodes nodes =
+    List.map viewNodeItem (Dict.toList nodes)
 
 
-viewContainerItem : ( Int, Container ) -> ListGroup.CustomItem Msg
-viewContainerItem containerTuple =
+viewNodeItem : ( Int, Node ) -> ListGroup.CustomItem Msg
+viewNodeItem nodeTuple =
     let
         id =
-            first containerTuple
+            first nodeTuple
 
-        container =
-            second containerTuple
+        node =
+            second nodeTuple
     in
-    ListGroup.anchor [ ListGroup.attrs [ href ("container/" ++ String.fromInt id), style "padding-left" "60px", style "border-left" ("4px solid " ++ container.color)] ]
+    ListGroup.anchor [ ListGroup.attrs [ href ("node/" ++ String.fromInt id), style "padding-left" "60px", style "border-left" ("4px solid " ++ node.color)] ]
         [ FeatherIcons.box |> FeatherIcons.withSize 19 |> FeatherIcons.toHtml []
-        , input [ type_ "text", class "editable-label", value container.name, onChange (ChangeContainerName id)] []
-        , span [ class "ml-3 text-muted float-right", Html.Events.Extra.onClickPreventDefaultAndStopPropagation (DeleteContainer id) ] [ FeatherIcons.trash2 |> FeatherIcons.withSize 16 |> FeatherIcons.toHtml [] ]
+        , input [ type_ "text", class "editable-label", value node.name, onChange (ChangeNodeName id)] []
+        , span [ class "ml-3 text-muted float-right", Html.Events.Extra.onClickPreventDefaultAndStopPropagation (DeleteNode id) ] [ FeatherIcons.trash2 |> FeatherIcons.withSize 16 |> FeatherIcons.toHtml [] ]
         ]
 
 

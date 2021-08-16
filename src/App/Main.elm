@@ -3,7 +3,7 @@ module App.Main exposing (..)
 import App.Cluster as Cluster
 import App.Configuration as Configuration
 import App.Instances as Instances
-import App.Container as Container
+import App.Node as Node
 import App.Results as Results
 import App.Service as Service
 import App.Settings as Settings exposing (update, Msg)
@@ -65,7 +65,7 @@ type Detail
     | Cluster Int
     | Service Int
     | Pod Int
-    | Container Int
+    | Node Int
     | Settings
 
 
@@ -81,7 +81,7 @@ type Msg
     | InstancesMsg Instances.Msg
     | ServiceMsg Service.Msg
     | PodMsg Pod.Msg
-    | ContainerMsg Container.Msg
+    | NodeMsg Node.Msg
     | SettingsMsg Settings.Msg
     | ViewportResize Int Int
     | ToggleSidebar
@@ -133,8 +133,8 @@ update msg ({ flags, navigation } as model) =
         PodMsg podMsg ->
             ( { model | configuration = Pod.update podMsg model.configuration }, Cmd.none )
 
-        ContainerMsg containerMsg ->
-            ( { model | configuration = Container.update containerMsg model.configuration }, Cmd.none )
+        NodeMsg nodeMsg ->
+            ( { model | configuration = Node.update nodeMsg model.configuration }, Cmd.none )
 
         SettingsMsg settingsMsg ->
             let
@@ -183,7 +183,7 @@ urlParser =
         [ Url.map None Url.top
         , Url.map Cluster (Url.s "cluster" </> Url.int)
         , Url.map Service (Url.s "service" </> Url.int)
-        , Url.map Container (Url.s "container" </> Url.int)
+        , Url.map Node (Url.s "node" </> Url.int)
         , Url.map Pod (Url.s "pod" </> Url.int)
         , Url.map Settings (Url.s "settings")
         ]
@@ -213,7 +213,7 @@ viewToggleButton collapsedSidebar =
                 False -> (FeatherIcons.arrowLeft, "25%")
     in
     
-    div [ class "toggle-sidebar-container"
+    div [ class "toggle-sidebar-node"
         , style "left" offset ] 
         [ Button.button 
             [ Button.secondary, Button.onClick ToggleSidebar ] 
@@ -287,12 +287,12 @@ viewDetail model =
 
         Pod id ->
             Dict.get id model.configuration.services
-                |> Maybe.map (\value -> Html.map PodMsg (Pod.view id value (Configuration.getContainers id model.configuration.containers)))
+                |> Maybe.map (\value -> Html.map PodMsg (Pod.view id value (Configuration.getNodes id model.configuration.nodes)))
                 |> Maybe.withDefault viewNotFoundDetail
 
-        Container id ->
-            Dict.get id model.configuration.containers
-                |> Maybe.map (\value -> Html.map ContainerMsg (Container.view id value model.configuration.daemons))
+        Node id ->
+            Dict.get id model.configuration.nodes
+                |> Maybe.map (\value -> Html.map NodeMsg (Node.view id value model.configuration.daemons))
                 |> Maybe.withDefault viewNotFoundDetail
 
         Settings ->
@@ -305,7 +305,7 @@ viewDetail model =
 viewNoneDetail : Html Msg
 viewNoneDetail =
     span [ class "text-muted align-middle" ]
-        [ text "Nothing here. Select a service, pod, or container from the left sidebar to start configuring." ]
+        [ text "Nothing here. Select a service, pod, or node from the left sidebar to start configuring." ]
 
 
 viewNotFoundDetail : Html Msg

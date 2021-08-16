@@ -42,8 +42,8 @@ update msg model =
             { model | services = Dict.update id (Maybe.map (\service -> { service | nominalPods = Util.toInt value })) model.services }
 
 
-view : Int -> Configuration.Service -> Configuration.Containers -> Html Msg
-view id service containers =
+view : Int -> Configuration.Service -> Configuration.Nodes -> Html Msg
+view id service nodes =
     div []
         [ Card.config [ Card.attrs [ class "mt-3" ] ]
             |> Card.header [] [ text (service.name ++ " - Pod Settings") ]
@@ -57,53 +57,53 @@ view id service containers =
                 ]
             |> Card.view
         , Card.config [ Card.attrs [ class "mt-3" ] ]
-            |> Card.header [] [ text "Containers Overview" ]
+            |> Card.header [] [ text "Nodes Overview" ]
             |> Card.block []
                 [ Block.custom <|
                     Form.form []
-                        [ Util.viewFormLabel "Total Memory" "Total memory of all containers in this service combined." ((String.fromFloat <| sumMemory containers * toFloat service.nominalPods) ++ " GiB")
-                        , Util.viewFormLabel "Total CPU Shares" "CPU Shares required for all containers in one pod" ((String.fromInt <| sumCPUShare containers * service.nominalPods) ++ "/1024")
-                        , Util.viewFormLabel "Total Bandwidth" "Bandwidth required for all containers in one pod" ((String.fromInt <| sumBandwidth containers * service.nominalPods) ++ " GiB/sec")
-                        , Util.viewFormLabel "IO Total" "IO requirements for all containers in one pod" (sumIoops service containers)
+                        [ Util.viewFormLabel "Total Memory" "Total memory of all nodes in this service combined." ((String.fromFloat <| sumMemory nodes * toFloat service.nominalPods) ++ " GiB")
+                        , Util.viewFormLabel "Total CPU Shares" "CPU Shares required for all nodes in one pod" ((String.fromInt <| sumCPUShare nodes * service.nominalPods) ++ "/1024")
+                        , Util.viewFormLabel "Total Bandwidth" "Bandwidth required for all nodes in one pod" ((String.fromInt <| sumBandwidth nodes * service.nominalPods) ++ " GiB/sec")
+                        , Util.viewFormLabel "IO Total" "IO requirements for all nodes in one pod" (sumIoops service nodes)
                         ]
                 ]
             |> Card.view
         ]
 
 
-sumMemory : Configuration.Containers -> Float
-sumMemory containers =
-    List.sum (List.map (\container -> toFloat container.memory) (Dict.values containers)) / 1000
+sumMemory : Configuration.Nodes -> Float
+sumMemory nodes =
+    List.sum (List.map (\node -> toFloat node.memory) (Dict.values nodes)) / 1000
 
 
-sumCPUShare : Configuration.Containers -> Int
-sumCPUShare containers =
-    List.sum (List.map (\container -> container.cpuShare) (Dict.values containers))
+sumCPUShare : Configuration.Nodes -> Int
+sumCPUShare nodes =
+    List.sum (List.map (\node -> node.cpuShare) (Dict.values nodes))
 
 
-sumBandwidth : Configuration.Containers -> Int
-sumBandwidth containers =
-    List.sum (List.map (\container -> container.bandwidth) (Dict.values containers))
+sumBandwidth : Configuration.Nodes -> Int
+sumBandwidth nodes =
+    List.sum (List.map (\node -> node.bandwidth) (Dict.values nodes))
 
 
-sumIoops : Configuration.Service -> Configuration.Containers -> String
-sumIoops service containers =
+sumIoops : Configuration.Service -> Configuration.Nodes -> String
+sumIoops service nodes =
     let
         -- This feels like a lot of duplicated code
-        containersWithEBS =
-            List.filter (\container -> container.useEBS == True) (Dict.values containers)
+        nodesWithEBS =
+            List.filter (\node -> node.useEBS == True) (Dict.values nodes)
 
-        containersWoEBS =
-            List.filter (\container -> container.useEBS == False) (Dict.values containers)
+        nodesWoEBS =
+            List.filter (\node -> node.useEBS == False) (Dict.values nodes)
 
         otherSum =
-            List.sum (List.map (\container -> container.ioops) (Dict.values containers))
+            List.sum (List.map (\node -> node.ioops) (Dict.values nodes))
 
         someUseEBS =
-            List.length containersWithEBS > 0
+            List.length nodesWithEBS > 0
     in
     if someUseEBS then
-        String.fromInt (List.length containersWithEBS) ++ " container(s) using EBS. Total: " ++ String.fromInt otherSum ++ "MiB/sec"
+        String.fromInt (List.length nodesWithEBS) ++ " node(s) using EBS. Total: " ++ String.fromInt otherSum ++ "MiB/sec"
 
     else
         String.fromInt (otherSum * service.nominalPods) ++ " MiB/sec"
