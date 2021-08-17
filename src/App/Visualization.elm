@@ -21,7 +21,7 @@ emptyBox =
 type alias Box =
     { id : Int
     , name : String
-    , serviceName : String
+    , controllerName : String
     , color : String
     , x : Float
     , y : Float
@@ -194,7 +194,7 @@ drawBoxInfo box x y offsetX =
     let
         cpuLabel = String.fromFloat box.width
         memLabel = Util.formatMegabytes (round box.height)
-        boxLabel = box.name ++ " (" ++ box.serviceName ++ ")"
+        boxLabel = box.name ++ " (" ++ box.controllerName ++ ")"
     in
     [ drawText (x + offsetX, y + 20) boxLabel "left"
     , drawText (x + offsetX, y + 35) ("CPU: " ++ cpuLabel) "left"
