@@ -33,26 +33,26 @@ update : Msg -> Model -> Model
 update msg model =
     case msg of
         UpdateMinPods id value ->
-            { model | services = Dict.update id (Maybe.map (\service -> { service | minPods = Util.toInt value })) model.services }
+            { model | controllers = Dict.update id (Maybe.map (\controller -> { controller | minPods = Util.toInt value })) model.controllers }
 
         UpdateMaxPods id value ->
-            { model | services = Dict.update id (Maybe.map (\service -> { service | maxPods = Util.toInt value })) model.services }
+            { model | controllers = Dict.update id (Maybe.map (\controller -> { controller | maxPods = Util.toInt value })) model.controllers }
 
         UpdateNominalPods id value ->
-            { model | services = Dict.update id (Maybe.map (\service -> { service | nominalPods = Util.toInt value })) model.services }
+            { model | controllers = Dict.update id (Maybe.map (\controller -> { controller | nominalPods = Util.toInt value })) model.controllers }
 
 
-view : Int -> Configuration.Service -> Configuration.Containers -> Html Msg
-view id service containers =
+view : Int -> Configuration.Controller -> Configuration.Containers -> Html Msg
+view id controller containers =
     div []
         [ Card.config [ Card.attrs [ class "mt-3" ] ]
-            |> Card.header [] [ text (service.name ++ " - Pod Settings") ]
+            |> Card.header [] [ text (controller.name ++ " - Pod Settings") ]
             |> Card.block []
                 [ Block.custom <|
                     Form.form []
-                        [ Util.viewFormRowSlider "Min. Pods" ((String.fromInt <| service.minPods) ++ " Pods") service.minPods 1 service.maxPods 1 (UpdateMinPods id)
-                        , Util.viewFormRowSlider "Nom. Pods" ((String.fromInt <| service.nominalPods) ++ " Pods") service.nominalPods service.minPods service.maxPods 1 (UpdateNominalPods id)
-                        , Util.viewFormRowSlider "Max. Pods" ((String.fromInt <| service.maxPods) ++ " Pods") service.maxPods service.minPods 100 1 (UpdateMaxPods id)
+                        [ Util.viewFormRowSlider "Min. Pods" ((String.fromInt <| controller.minPods) ++ " Pods") controller.minPods 1 controller.maxPods 1 (UpdateMinPods id)
+                        , Util.viewFormRowSlider "Nom. Pods" ((String.fromInt <| controller.nominalPods) ++ " Pods") controller.nominalPods controller.minPods controller.maxPods 1 (UpdateNominalPods id)
+                        , Util.viewFormRowSlider "Max. Pods" ((String.fromInt <| controller.maxPods) ++ " Pods") controller.maxPods controller.minPods 100 1 (UpdateMaxPods id)
                         ]
                 ]
             |> Card.view
@@ -61,10 +61,10 @@ view id service containers =
             |> Card.block []
                 [ Block.custom <|
                     Form.form []
-                        [ Util.viewFormLabel "Total Memory" "Total memory of all containers in this service combined." ((String.fromFloat <| sumMemory containers * toFloat service.nominalPods) ++ " GiB")
-                        , Util.viewFormLabel "Total CPU Shares" "CPU Shares required for all containers in one pod" ((String.fromInt <| sumCPUShare containers * service.nominalPods) ++ "/1024")
-                        , Util.viewFormLabel "Total Bandwidth" "Bandwidth required for all containers in one pod" ((String.fromInt <| sumBandwidth containers * service.nominalPods) ++ " GiB/sec")
-                        , Util.viewFormLabel "IO Total" "IO requirements for all containers in one pod" (sumIoops service containers)
+                        [ Util.viewFormLabel "Total Memory" "Total memory of all containers in this controller combined." ((String.fromFloat <| sumMemory containers * toFloat controller.nominalPods) ++ " GiB")
+                        , Util.viewFormLabel "Total CPU Shares" "CPU Shares required for all containers in one pod" ((String.fromInt <| sumCPUShare containers * controller.nominalPods) ++ "/1024")
+                        , Util.viewFormLabel "Total Bandwidth" "Bandwidth required for all containers in one pod" ((String.fromInt <| sumBandwidth containers * controller.nominalPods) ++ " GiB/sec")
+                        , Util.viewFormLabel "IO Total" "IO requirements for all containers in one pod" (sumIoops controller containers)
                         ]
                 ]
             |> Card.view
@@ -86,8 +86,8 @@ sumBandwidth containers =
     List.sum (List.map (\container -> container.bandwidth) (Dict.values containers))
 
 
-sumIoops : Configuration.Service -> Configuration.Containers -> String
-sumIoops service containers =
+sumIoops : Configuration.Controller -> Configuration.Containers -> String
+sumIoops controller containers =
     let
         -- This feels like a lot of duplicated code
         containersWithEBS =
@@ -106,4 +106,4 @@ sumIoops service containers =
         String.fromInt (List.length containersWithEBS) ++ " container(s) using EBS. Total: " ++ String.fromInt otherSum ++ "MiB/sec"
 
     else
-        String.fromInt (otherSum * service.nominalPods) ++ " MiB/sec"
+        String.fromInt (otherSum * controller.nominalPods) ++ " MiB/sec"

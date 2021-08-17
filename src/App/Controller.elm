@@ -1,4 +1,4 @@
-module App.Service exposing (Model, Msg(..), update, view)
+module App.Controller exposing (Model, Msg(..), update, view)
 
 import App.Configuration as Configuration exposing (PackingStrategy)
 import App.Util as Util
@@ -28,20 +28,20 @@ update : Msg -> Model -> Model
 update msg model =
     case msg of
         UpdateScalingTarget id value ->
-            { model | services = Dict.update id (Maybe.map (\service -> { service | scalingTarget = Util.toInt value })) model.services }
+            { model | controllers = Dict.update id (Maybe.map (\controller -> { controller | scalingTarget = Util.toInt value })) model.controllers }
 
         UpdatePackingStrategy id strategy ->
-            { model | services = Dict.update id (Maybe.map (\service -> { service | packingStrategy = strategy })) model.services }
+            { model | controllers = Dict.update id (Maybe.map (\controller -> { controller | packingStrategy = strategy })) model.controllers }
 
 
-view : Int -> Configuration.Service -> Html Msg
-view id service =
+view : Int -> Configuration.Controller -> Html Msg
+view id controller =
     Card.config []
-        |> Card.header [] [ text service.name ]
+        |> Card.header [] [ text controller.name ]
         |> Card.block []
             [ Block.custom <|
                 Form.form []
-                    [ Util.viewFormRowSlider "Scaling Target" ((String.fromInt <| service.scalingTarget) ++ "%") service.scalingTarget 0 100 1 (UpdateScalingTarget id)
+                    [ Util.viewFormRowSlider "Scaling Target" ((String.fromInt <| controller.scalingTarget) ++ "%") controller.scalingTarget 0 100 1 (UpdateScalingTarget id)
                     , Form.row []
                         [ Form.colLabel [ Col.sm3 ] [ text "Packing Strategy" ]
                         , Form.col [ Col.sm9 ]
@@ -49,8 +49,8 @@ view id service =
                                 |> Fieldset.asGroup
                                 |> Fieldset.children
                                     (Radio.radioList "packingStrategy"
-                                        [ Radio.create [ Radio.id "cpushares", Radio.checked (service.packingStrategy == Configuration.ByCPUShares), Radio.onClick (UpdatePackingStrategy id Configuration.ByCPUShares) ] "By CPU Shares"
-                                        , Radio.create [ Radio.id "memory", Radio.checked (service.packingStrategy == Configuration.ByMemory), Radio.onClick (UpdatePackingStrategy id Configuration.ByMemory) ] "By Memory"
+                                        [ Radio.create [ Radio.id "cpushares", Radio.checked (controller.packingStrategy == Configuration.ByCPUShares), Radio.onClick (UpdatePackingStrategy id Configuration.ByCPUShares) ] "By CPU Shares"
+                                        , Radio.create [ Radio.id "memory", Radio.checked (controller.packingStrategy == Configuration.ByMemory), Radio.onClick (UpdatePackingStrategy id Configuration.ByMemory) ] "By Memory"
                                         ]
                                     )
                                 |> Fieldset.view

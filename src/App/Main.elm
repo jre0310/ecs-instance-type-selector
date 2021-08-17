@@ -5,7 +5,7 @@ import App.Configuration as Configuration
 import App.Instances as Instances
 import App.Container as Container
 import App.Results as Results
-import App.Service as Service
+import App.Controller as Controller
 import App.Settings as Settings exposing (update, Msg)
 import App.Pod as Pod
 import App.Util as Util
@@ -63,7 +63,7 @@ type alias Model =
 type Detail
     = None
     | Cluster Int
-    | Service Int
+    | Controller Int
     | Pod Int
     | Container Int
     | Settings
@@ -79,7 +79,7 @@ type Msg
     | UrlChanged Url.Url
     | ConfigurationMsg Configuration.Msg
     | InstancesMsg Instances.Msg
-    | ServiceMsg Service.Msg
+    | ControllerMsg Controller.Msg
     | PodMsg Pod.Msg
     | ContainerMsg Container.Msg
     | SettingsMsg Settings.Msg
@@ -127,8 +127,8 @@ update msg ({ flags, navigation } as model) =
         ConfigurationMsg configurationMsg ->
             ( { model | configuration = Configuration.update configurationMsg model.configuration }, Cmd.none )
 
-        ServiceMsg serviceMsg ->
-            ( { model | configuration = Service.update serviceMsg model.configuration }, Cmd.none )
+        ControllerMsg controllerMsg ->
+            ( { model | configuration = Controller.update controllerMsg model.configuration }, Cmd.none )
 
         PodMsg podMsg ->
             ( { model | configuration = Pod.update podMsg model.configuration }, Cmd.none )
@@ -182,7 +182,7 @@ urlParser =
     Url.oneOf
         [ Url.map None Url.top
         , Url.map Cluster (Url.s "cluster" </> Url.int)
-        , Url.map Service (Url.s "service" </> Url.int)
+        , Url.map Controller (Url.s "controller" </> Url.int)
         , Url.map Container (Url.s "container" </> Url.int)
         , Url.map Pod (Url.s "pod" </> Url.int)
         , Url.map Settings (Url.s "settings")
@@ -280,13 +280,13 @@ viewDetail model =
                 |> Maybe.map (\value -> Cluster.view id value)
                 |> Maybe.withDefault viewNotFoundDetail
 
-        Service id ->
-            Dict.get id model.configuration.services
-                |> Maybe.map (\value -> Html.map ServiceMsg (Service.view id value))
+        Controller id ->
+            Dict.get id model.configuration.controllers
+                |> Maybe.map (\value -> Html.map ControllerMsg (Controller.view id value))
                 |> Maybe.withDefault viewNotFoundDetail
 
         Pod id ->
-            Dict.get id model.configuration.services
+            Dict.get id model.configuration.controllers
                 |> Maybe.map (\value -> Html.map PodMsg (Pod.view id value (Configuration.getContainers id model.configuration.containers)))
                 |> Maybe.withDefault viewNotFoundDetail
 
@@ -305,7 +305,7 @@ viewDetail model =
 viewNoneDetail : Html Msg
 viewNoneDetail =
     span [ class "text-muted align-middle" ]
-        [ text "Nothing here. Select a service, pod, or container from the left sidebar to start configuring." ]
+        [ text "Nothing here. Select a controller, pod, or container from the left sidebar to start configuring." ]
 
 
 viewNotFoundDetail : Html Msg

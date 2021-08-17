@@ -53,15 +53,15 @@ view model =
         [ Util.viewColumnTitle
             "Results"
         , hr [] []
-        , viewResultsForService model
+        , viewResultsForController model
         ]
 
 getSuggestedInstances: Model -> List Instance
 getSuggestedInstances model =
     let
-        services = model.configuration.services
+        controllers = model.configuration.controllers
         containers = model.configuration.containers
-        boxes = convertToBoxes services containers
+        boxes = convertToBoxes controllers containers
         visualization = prepareVisualization boxes 
         share = round <| visualization.width
         memory = round <| visualization.height
@@ -84,12 +84,12 @@ getSuggestedInstances model =
     in
         output
 
-viewResultsForService : Model -> Html msg
-viewResultsForService model =
+viewResultsForController : Model -> Html msg
+viewResultsForController model =
     let
-        services = model.configuration.services
+        controllers = model.configuration.controllers
         containers = model.configuration.containers
-        boxes = convertToBoxes services containers
+        boxes = convertToBoxes controllers containers
         visualization = prepareVisualization boxes 
         share = round <| visualization.width / 1024
         memory = round <| visualization.height
@@ -222,25 +222,25 @@ viewReservedAllNoUpFront rateCode hourlyCost contractLength =
         ]
 
 
-convertToBoxes : Configuration.Services -> Configuration.Containers -> List Box 
-convertToBoxes services containers =
+convertToBoxes : Configuration.Controllers -> Configuration.Containers -> List Box 
+convertToBoxes controllers containers =
     let
         containersList = Dict.toList containers
 
-        initialBoxes = List.concatMap (convertToRepeatedBox services) containersList
+        initialBoxes = List.concatMap (convertToRepeatedBox controllers) containersList
     in
     initialBoxes
 
 
-convertToRepeatedBox : Configuration.Services -> (Int, Configuration.Container) -> List Box
-convertToRepeatedBox services (id, container) =
+convertToRepeatedBox : Configuration.Controllers -> (Int, Configuration.Container) -> List Box
+convertToRepeatedBox controllers (id, container) =
     let
-        service = Dict.get container.serviceId services |> Maybe.withDefault (Configuration.Service "" 0 0 App.Configuration.ByCPUShares 0 0 0)
+        controller = Dict.get container.controllerId controllers |> Maybe.withDefault (Configuration.Controller "" 0 0 App.Configuration.ByCPUShares 0 0 0)
         cpuShare = (toFloat container.cpuShare)
         memory = (toFloat container.memory)
         sortValue =
-            case service.packingStrategy of
+            case controller.packingStrategy of
                 App.Configuration.ByCPUShares -> cpuShare
                 App.Configuration.ByMemory -> memory
     in
-    List.repeat service.nominalPods (Box id container.name service.name container.color 0 0 cpuShare memory sortValue)
+    List.repeat controller.nominalPods (Box id container.name controller.name container.color 0 0 cpuShare memory sortValue)
