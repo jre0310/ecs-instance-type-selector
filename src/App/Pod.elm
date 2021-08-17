@@ -1,4 +1,4 @@
-module App.Task exposing (Model, Msg(..), update, view)
+module App.Pod exposing (Model, Msg(..), update, view)
 
 import App.Configuration as Configuration
 import App.Constants exposing (allRegions)
@@ -20,9 +20,9 @@ type alias Model =
 
 
 type Msg
-    = UpdateMinTasks Int String
-    | UpdateMaxTasks Int String
-    | UpdateNominalTasks Int String
+    = UpdateMinPods Int String
+    | UpdateMaxPods Int String
+    | UpdateNominalPods Int String
 
 
 
@@ -32,27 +32,27 @@ type Msg
 update : Msg -> Model -> Model
 update msg model =
     case msg of
-        UpdateMinTasks id value ->
-            { model | services = Dict.update id (Maybe.map (\service -> { service | minTasks = Util.toInt value })) model.services }
+        UpdateMinPods id value ->
+            { model | services = Dict.update id (Maybe.map (\service -> { service | minPods = Util.toInt value })) model.services }
 
-        UpdateMaxTasks id value ->
-            { model | services = Dict.update id (Maybe.map (\service -> { service | maxTasks = Util.toInt value })) model.services }
+        UpdateMaxPods id value ->
+            { model | services = Dict.update id (Maybe.map (\service -> { service | maxPods = Util.toInt value })) model.services }
 
-        UpdateNominalTasks id value ->
-            { model | services = Dict.update id (Maybe.map (\service -> { service | nominalTasks = Util.toInt value })) model.services }
+        UpdateNominalPods id value ->
+            { model | services = Dict.update id (Maybe.map (\service -> { service | nominalPods = Util.toInt value })) model.services }
 
 
 view : Int -> Configuration.Service -> Configuration.Containers -> Html Msg
 view id service containers =
     div []
         [ Card.config [ Card.attrs [ class "mt-3" ] ]
-            |> Card.header [] [ text (service.name ++ " - Task Settings") ]
+            |> Card.header [] [ text (service.name ++ " - Pod Settings") ]
             |> Card.block []
                 [ Block.custom <|
                     Form.form []
-                        [ Util.viewFormRowSlider "Min. Tasks" ((String.fromInt <| service.minTasks) ++ " Tasks") service.minTasks 1 service.maxTasks 1 (UpdateMinTasks id)
-                        , Util.viewFormRowSlider "Nom. Tasks" ((String.fromInt <| service.nominalTasks) ++ " Tasks") service.nominalTasks service.minTasks service.maxTasks 1 (UpdateNominalTasks id)
-                        , Util.viewFormRowSlider "Max. Tasks" ((String.fromInt <| service.maxTasks) ++ " Tasks") service.maxTasks service.minTasks 100 1 (UpdateMaxTasks id)
+                        [ Util.viewFormRowSlider "Min. Pods" ((String.fromInt <| service.minPods) ++ " Pods") service.minPods 1 service.maxPods 1 (UpdateMinPods id)
+                        , Util.viewFormRowSlider "Nom. Pods" ((String.fromInt <| service.nominalPods) ++ " Pods") service.nominalPods service.minPods service.maxPods 1 (UpdateNominalPods id)
+                        , Util.viewFormRowSlider "Max. Pods" ((String.fromInt <| service.maxPods) ++ " Pods") service.maxPods service.minPods 100 1 (UpdateMaxPods id)
                         ]
                 ]
             |> Card.view
@@ -61,10 +61,10 @@ view id service containers =
             |> Card.block []
                 [ Block.custom <|
                     Form.form []
-                        [ Util.viewFormLabel "Total Memory" "Total memory of all containers in this service combined." ((String.fromFloat <| sumMemory containers * toFloat service.nominalTasks) ++ " GiB")
-                        , Util.viewFormLabel "Total CPU Shares" "CPU Shares required for all containers in one task" ((String.fromInt <| sumCPUShare containers * service.nominalTasks) ++ "/1024")
-                        , Util.viewFormLabel "Total Bandwidth" "Bandwidth required for all containers in one task" ((String.fromInt <| sumBandwidth containers * service.nominalTasks) ++ " GiB/sec")
-                        , Util.viewFormLabel "IO Total" "IO requirements for all containers in one task" (sumIoops service containers)
+                        [ Util.viewFormLabel "Total Memory" "Total memory of all containers in this service combined." ((String.fromFloat <| sumMemory containers * toFloat service.nominalPods) ++ " GiB")
+                        , Util.viewFormLabel "Total CPU Shares" "CPU Shares required for all containers in one pod" ((String.fromInt <| sumCPUShare containers * service.nominalPods) ++ "/1024")
+                        , Util.viewFormLabel "Total Bandwidth" "Bandwidth required for all containers in one pod" ((String.fromInt <| sumBandwidth containers * service.nominalPods) ++ " GiB/sec")
+                        , Util.viewFormLabel "IO Total" "IO requirements for all containers in one pod" (sumIoops service containers)
                         ]
                 ]
             |> Card.view
@@ -106,4 +106,4 @@ sumIoops service containers =
         String.fromInt (List.length containersWithEBS) ++ " container(s) using EBS. Total: " ++ String.fromInt otherSum ++ "MiB/sec"
 
     else
-        String.fromInt (otherSum * service.nominalTasks) ++ " MiB/sec"
+        String.fromInt (otherSum * service.nominalPods) ++ " MiB/sec"
