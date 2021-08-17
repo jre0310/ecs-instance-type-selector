@@ -81,7 +81,7 @@ viewVisualization suggestion  =
         [ width (String.fromFloat (suggestion.suggestedWidth * widthScale + padding) ++ "px")
         , height (String.fromFloat (suggestion.suggestedHeight * heightScale + padding) ++ "px")
         , style "border" "#a9a9a9"
-        ] ( drawSuggestedInstance suggestedDimensions ++
+        ] ( drawSuggestedNode suggestedDimensions ++
             drawWatermark suggestion.title suggestedDimensions ++
             drawAxisLabels suggestedDimensions ++
             drawFreeSpaceBox visualization suggestedDimensions ++
@@ -128,8 +128,8 @@ calculateRemainingBox visualization (suggestedWidth, suggestedHeight) =
     (Box -1 "Remaining" "Total" "rgba(200,200,200,0.6)" x y width height 0)
 
 
-drawSuggestedInstance: (Float, Float) -> List (Svg msg)
-drawSuggestedInstance (suggestedWidth, suggestedHeight) =
+drawSuggestedNode: (Float, Float) -> List (Svg msg)
+drawSuggestedNode (suggestedWidth, suggestedHeight) =
     [ rect 
            [ width (String.fromFloat (suggestedWidth * widthScale) ++ "px"),
              height (String.fromFloat (suggestedHeight * heightScale) ++ "px"),

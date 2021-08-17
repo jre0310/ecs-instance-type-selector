@@ -8,7 +8,7 @@ let app = Elm.App.Main.init({
   flags : { basePath }
 });
 
-app.ports.requestInstances.subscribe(function ( message ) {
+app.ports.requestNodes.subscribe(function ( message ) {
    let pricing = new AWS.Pricing({
       region: message[0],
       apiVersion: '2017-10-15',
@@ -33,7 +33,7 @@ app.ports.requestInstances.subscribe(function ( message ) {
     if (err) {
       console.log(err);
     } else { 
-      app.ports.receiveInstances.send(JSON.stringify(data));  // successful response -- DECIDE: send back string JSON or just object?
+      app.ports.receiveNodes.send(JSON.stringify(data));  // successful response -- DECIDE: send back string JSON or just object?
     }
   });
 });

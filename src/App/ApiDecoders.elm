@@ -38,7 +38,7 @@ type alias Product =
 
 type alias Attributes =
     { memory : String
-    , instanceType : String
+    , nodeType : String
     , location : String
     , operatingSystem : String
     , vCPU : String
@@ -99,7 +99,7 @@ attributesDecoder : Decoder Attributes
 attributesDecoder =
     succeed Attributes
         |> optional "memory" string ""
-        |> optional "instanceType" string "Unknown"
+        |> optional "nodeType" string "Unknown"
         |> optional "location" string "Unknown"
         |> optional "operatingSystem" string "Unknown"
         |> optional "vcpu" string ""

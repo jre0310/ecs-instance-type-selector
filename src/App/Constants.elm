@@ -1,8 +1,8 @@
 module App.Constants exposing (..)
 
 
-instanceTypes : List String
-instanceTypes =
+nodeTypes : List String
+nodeTypes =
     [ "t2", "t3", "m1", "m2", "m3", "m4", "m5", "m6", 
       "h1", "d2", "cr1", "u", "c3", "c4", "c5", "c6",
       "x1", "z1", "a1", "r3", "r4", "r5", "r6", "p2",
