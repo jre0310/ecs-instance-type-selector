@@ -1,4 +1,4 @@
-port module App.Instances exposing (..)
+port module App.Nodes exposing (..)
 
 import App.ApiDecoders as ApiDecoders
 import Json.Decode exposing (Error(..), decodeString)
@@ -10,9 +10,9 @@ import Html exposing (i)
 
 ---- PORTS ----
 
-port requestInstances : ( String, String, Int ) -> Cmd msg
+port requestNodes : ( String, String, Int ) -> Cmd msg
 
-port receiveInstances : (String -> msg) -> Sub msg
+port receiveNodes : (String -> msg) -> Sub msg
 
 
 -- Model
@@ -27,36 +27,36 @@ type OptomizationOrder
     | BoxThenRegions
 
 type alias Model =
-     { instances: Instances
+     { nodes: Nodes
      , filters: Filters
      , pricingType: PreferredPricing
      }
     
 type alias Filters = 
     { os: List String
-    , instanceType: List String
+    , nodeType: List String
     , regions: List String
     }
 
 type FilterType
     = OS
-    | InstanceType
+    | NodeType
     | Region
 
 type Msg
-    = LoadInstances (Result Json.Decode.Error ApiDecoders.ProductsResponse)
+    = LoadNodes (Result Json.Decode.Error ApiDecoders.ProductsResponse)
     | SetFilters FilterType (List String)
     | SetPreferredPricing PreferredPricing
 
 
-type alias Instances = List Instance
-type alias Instance = 
-     { sku: String                 -- The SKU (ID) of the EC2 instance
-     , instanceType: String        -- The instance type (e.g. "m5ad.12xlarge")
+type alias Nodes = List Node
+type alias Node = 
+     { sku: String                 -- The SKU (ID) of the EC2 node
+     , nodeType: String        -- The node type (e.g. "m5ad.12xlarge")
      , location: String            -- This relates to the region, but for now, probably a good idea to store this (e.g. "EU (Ireland)")
      , operatingSystem: String     -- Probably a good idea to have this for future purposes
      , memory: Int                 -- The memory available, in MB. Make sure we convert to MB from whatever the API gives us.
-     , vCPU: Int                   -- Number of vCPUs that this instance has available
+     , vCPU: Int                   -- Number of vCPUs that this node has available
      , prices: List BoxPricing
      }
 
@@ -82,13 +82,13 @@ defaultRegion =
 -- Setup
 
 init : Model
-init = {instances=[], filters={os=[], instanceType=[], regions=[]}, pricingType = Reserved1Yr}
+init = {nodes=[], filters={os=[], nodeType=[], regions=[]}, pricingType = Reserved1Yr}
 
 
-defaultInstance : Instance
-defaultInstance =
+defaultNode : Node
+defaultNode =
     { sku = ""
-      , instanceType = ""
+      , nodeType = ""
       , location = ""
       , operatingSystem = ""
       , memory = 0
@@ -99,16 +99,16 @@ defaultInstance =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    receiveInstances (LoadInstances << decodeString ApiDecoders.productsResponseDecoder)
+    receiveNodes (LoadNodes << decodeString ApiDecoders.productsResponseDecoder)
 
 
-numInstancesBatched : Int
-numInstancesBatched =
+numNodesBatched : Int
+numNodesBatched =
     100
 
 
-maxInstancesTesting : Int 
-maxInstancesTesting =
+maxNodesTesting : Int 
+maxNodesTesting =
     1500
 
 
@@ -118,24 +118,24 @@ maxInstancesTesting =
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
     case msg of
-        LoadInstances (Ok response) ->
+        LoadNodes (Ok response) ->
             let
-                simplified = mapToInstances response.priceList
-                totalCount = List.length model.instances
+                simplified = mapToNodes response.priceList
+                totalCount = List.length model.nodes
 
                 region = defaultRegion
                 nextCommand =
-                -- Ensure we do not exceed our max limit of instances
-                    if totalCount < maxInstancesTesting - numInstancesBatched then
-                        requestInstances ( region, response.nextToken, numInstancesBatched )
+                -- Ensure we do not exceed our max limit of nodes
+                    if totalCount < maxNodesTesting - numNodesBatched then
+                        requestNodes ( region, response.nextToken, numNodesBatched )
                     else
                         Cmd.none
             in
-            ( {model | instances = model.instances ++ simplified}, nextCommand )
+            ( {model | nodes = model.nodes ++ simplified}, nextCommand )
 
-        LoadInstances (Err err) ->
+        LoadNodes (Err err) ->
             let
-                _ = Debug.log "Instance Load Error" err
+                _ = Debug.log "Node Load Error" err
             in
             ( model, Cmd.none )
 
@@ -146,11 +146,11 @@ update msg model =
                         filters = model.filters
                     in
                     ({model | filters = { filters | os = filterData}}, Cmd.none)
-                InstanceType ->
+                NodeType ->
                     let
                         filters = model.filters
                     in
-                    ({model | filters = { filters | instanceType = filterData}}, Cmd.none)
+                    ({model | filters = { filters | nodeType = filterData}}, Cmd.none)
                 Region ->
                     let
                         filters = model.filters
@@ -162,41 +162,41 @@ update msg model =
 
 -- Mapping
 
-mapToInstances : List ApiDecoders.PriceListing -> Instances
-mapToInstances original =
-    values <| List.map priceListingToInstance original 
+mapToNodes : List ApiDecoders.PriceListing -> Nodes
+mapToNodes original =
+    values <| List.map priceListingToNode original 
 
 
-findOptimalSuggestions: Model -> String -> String -> Int -> Int -> Instance 
-findOptimalSuggestions model region instanceType vcpu memory =
+findOptimalSuggestions: Model -> String -> String -> Int -> Int -> Node 
+findOptimalSuggestions model region nodeType vcpu memory =
    let 
-        suggestions = model.instances 
-            |> List.filter (isSuitableInstance vcpu memory)
-            |> List.filter (isNotExludedInstance model.filters)
+        suggestions = model.nodes 
+            |> List.filter (isSuitableNode vcpu memory)
+            |> List.filter (isNotExludedNode model.filters)
             |> List.filter (filterByPricing model.pricingType)
             |> List.filter (filterByRegion region)
-            |> List.filter (filterByInstanceType instanceType)
+            |> List.filter (filterByNodeType nodeType)
             |> List.sortBy .memory
             |> List.sortBy .vCPU
             --|> List.sortBy lowestPrice
              -- TODO: sort by lowest price
    in
-        List.head suggestions |> Maybe.withDefault defaultInstance
+        List.head suggestions |> Maybe.withDefault defaultNode
 
 
-filterByPricing: PreferredPricing -> Instance -> Bool
-filterByPricing preferred instance =
-    List.any (pricingLambda preferred) instance.prices
+filterByPricing: PreferredPricing -> Node -> Bool
+filterByPricing preferred node =
+    List.any (pricingLambda preferred) node.prices
 
 
-filterByRegion: String -> Instance -> Bool
-filterByRegion region instance =
-    String.startsWith region instance.location 
+filterByRegion: String -> Node -> Bool
+filterByRegion region node =
+    String.startsWith region node.location 
 
 
-filterByInstanceType: String -> Instance -> Bool
-filterByInstanceType instanceType instance =
-    String.startsWith instanceType instance.instanceType 
+filterByNodeType: String -> Node -> Bool
+filterByNodeType nodeType node =
+    String.startsWith nodeType node.nodeType 
 
 
 pricingLambda: PreferredPricing -> BoxPricing -> Bool
@@ -221,52 +221,52 @@ pricingLambda preferred pricing =
                 OnDemand _ _ -> True
                 _ -> False    
 
---lowestPrice: Instance -> Instance -> Instances -> Instances
---lowestPrice instance compare instances =
+--lowestPrice: Node -> Node -> Nodes -> Nodes
+--lowestPrice node compare nodes =
  --   []
 
 
 
-isNotExludedInstance: Filters -> Instance -> Bool 
-isNotExludedInstance filters instance =
+isNotExludedNode: Filters -> Node -> Bool 
+isNotExludedNode filters node =
     let
-        osExcluded = List.member instance.operatingSystem filters.os
-        typeExcluded = isNotExcludedInstanceType filters instance -- TODO: Fix and actually make this work
+        osExcluded = List.member node.operatingSystem filters.os
+        typeExcluded = isNotExcludedNodeType filters node -- TODO: Fix and actually make this work
 
-        regionIncluded = isIncludedRegion filters instance
+        regionIncluded = isIncludedRegion filters node
     in
         not osExcluded && not typeExcluded && regionIncluded
 
-isNotExcludedInstanceType: Filters -> Instance -> Bool 
-isNotExcludedInstanceType filters instance =
+isNotExcludedNodeType: Filters -> Node -> Bool 
+isNotExcludedNodeType filters node =
     let
-        itype = instance.instanceType
+        itype = node.nodeType
     in
-        List.any (\item -> String.startsWith item itype) filters.instanceType
+        List.any (\item -> String.startsWith item itype) filters.nodeType
 
 
-isIncludedRegion: Filters -> Instance -> Bool 
-isIncludedRegion filters instance =
+isIncludedRegion: Filters -> Node -> Bool 
+isIncludedRegion filters node =
     let
-        region = instance.location
+        region = node.location
     in
         List.any (\item -> String.startsWith item region) filters.regions
     
-isSuitableInstance : Int -> Int -> Instance -> Bool
-isSuitableInstance vcpu memory instance =
+isSuitableNode : Int -> Int -> Node -> Bool
+isSuitableNode vcpu memory node =
     let
         share = round <| toFloat vcpu
     in
-    instance.memory >= memory && (instance.vCPU * 1024) >= share
+    node.memory >= memory && (node.vCPU * 1024) >= share
 
 
-priceListingToInstance : ApiDecoders.PriceListing -> Maybe Instance
-priceListingToInstance original =
+priceListingToNode : ApiDecoders.PriceListing -> Maybe Node
+priceListingToNode original =
     let
         product = original.product
         attributes = product.attributes
         sku = product.sku
-        instanceType = attributes.instanceType
+        nodeType = attributes.nodeType
         location = attributes.location
         operatingSystem = attributes.operatingSystem
         memory = attributes.memory |> convertMemoryStringToMiB
@@ -277,7 +277,7 @@ priceListingToInstance original =
         pricingList = onDemandPrices ++ reservedPrices
     in 
         if memory > 0 && vCPU >= 0 then
-            Just (Instance sku instanceType location operatingSystem memory vCPU pricingList)
+            Just (Node sku nodeType location operatingSystem memory vCPU pricingList)
         else
             Nothing
 

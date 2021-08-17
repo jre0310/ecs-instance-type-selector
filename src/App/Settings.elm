@@ -1,6 +1,6 @@
 module App.Settings exposing (Model, Msg(..), init, subscriptions, update, view)
-import App.Instances as Instances exposing (FilterType, Model, Filters, update, Msg(..), PreferredPricing(..), OptomizationOrder(..))
-import App.Constants exposing (instanceTypes, allRegions)
+import App.Nodes as Nodes exposing (FilterType, Model, Filters, update, Msg(..), PreferredPricing(..), OptomizationOrder(..))
+import App.Constants exposing (nodeTypes, allRegions)
 import App.Util as Util
 import Bootstrap.Card as Card
 import Bootstrap.Card.Block as Block
@@ -11,10 +11,10 @@ import Bootstrap.Grid.Col as Col
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Multiselect
-import App.Instances exposing (Instances)
+import App.Nodes exposing (Nodes)
 
 type alias Model =
-    { excludedInstances : Multiselect.Model
+    { excludedNodes : Multiselect.Model
     , excludedSystems: Multiselect.Model
     , includedRegions: Multiselect.Model
     , preferredPricing: PreferredPricing
@@ -25,7 +25,7 @@ type alias Model =
 
 init : Model
 init =
-    { excludedInstances = Multiselect.initModel (List.map (\instanceType -> (instanceType, String.toUpper instanceType)) instanceTypes) "A"
+    { excludedNodes = Multiselect.initModel (List.map (\nodeType -> (nodeType, String.toUpper nodeType)) nodeTypes) "A"
     , excludedSystems = Multiselect.initModel [("SUSE", "SUSE"), ("Windows", "Windows"), ("Linux", "Linux"), ("RHEL", "RHEL")] "B"
     , includedRegions = Multiselect.initModel (List.map (\region -> (region, region)) allRegions) "C"
     , preferredPricing = Reserved1Yr
@@ -38,7 +38,7 @@ init =
 
 
 type Msg
-    = UpdateExcludedInstances Multiselect.Msg
+    = UpdateExcludedNodes Multiselect.Msg
     | UpdateExcludedOS Multiselect.Msg
     | UpdateIncludedRegions Multiselect.Msg
     | SetPricingPreference PreferredPricing
@@ -47,12 +47,12 @@ type Msg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        UpdateExcludedInstances instancesChangedMessage ->
+        UpdateExcludedNodes nodesChangedMessage ->
             let
-                ( newExcludedInstances, subCmd, _ ) =
-                    Multiselect.update instancesChangedMessage model.excludedInstances
+                ( newExcludedNodes, subCmd, _ ) =
+                    Multiselect.update nodesChangedMessage model.excludedNodes
             in
-            ( { model | excludedInstances = newExcludedInstances }, Cmd.map UpdateExcludedInstances subCmd )
+            ( { model | excludedNodes = newExcludedNodes }, Cmd.map UpdateExcludedNodes subCmd )
 
         UpdateExcludedOS osChangedMessage ->
             let
@@ -78,7 +78,7 @@ update msg model =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch 
-    [ Sub.map UpdateExcludedInstances <| Multiselect.subscriptions model.excludedInstances
+    [ Sub.map UpdateExcludedNodes <| Multiselect.subscriptions model.excludedNodes
     , Sub.map UpdateExcludedOS <| Multiselect.subscriptions model.excludedSystems
     , Sub.map UpdateIncludedRegions <| Multiselect.subscriptions model.includedRegions
     ]
@@ -93,24 +93,24 @@ view model =
             [ Block.custom <|
                 Form.form []
                     [ Form.row []
-                        [ Form.colLabel [ Col.sm3 ] [ text "Excluded Instance Types" ]
+                        [ Form.colLabel [ Col.sm3 ] [ text "Excluded Node Types" ]
                         , Form.col [ Col.sm9 ]
-                            [ Html.map UpdateExcludedInstances <| Multiselect.view model.excludedInstances
-                            , Form.help [] [ text "Exclude specific ECS instances. These will be ignored during the cluster optimization calculation." ]
+                            [ Html.map UpdateExcludedNodes <| Multiselect.view model.excludedNodes
+                            , Form.help [] [ text "Exclude specific ECS nodes. These will be ignored during the cluster optimization calculation." ]
                             ]
                         ]
                     , Form.row []
                         [ Form.colLabel [ Col.sm3 ] [ text "Excluded Operating System Types" ]
                         , Form.col [ Col.sm9 ]
                             [ Html.map UpdateExcludedOS <| Multiselect.view model.excludedSystems
-                            , Form.help [] [ text "Exclude specific operating systems from the EC2 instances." ]
+                            , Form.help [] [ text "Exclude specific operating systems from the EC2 nodes." ]
                             ]
                         ]
                     , Form.row []
                         [ Form.colLabel [ Col.sm3 ] [ text "Included Regions" ]
                         , Form.col [ Col.sm9 ]
                             [ Html.map UpdateIncludedRegions <| Multiselect.view model.includedRegions
-                            , Form.help [] [ text "For each of these regions, we will try and find an optimal instance type." ]
+                            , Form.help [] [ text "For each of these regions, we will try and find an optimal node type." ]
                             ]
                         ]
                     , hr [] []

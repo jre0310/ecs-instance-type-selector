@@ -2,7 +2,7 @@ module App.Main exposing (..)
 
 import App.Cluster as Cluster
 import App.Configuration as Configuration
-import App.Instances as Instances
+import App.Nodes as Nodes
 import App.Container as Container
 import App.Results as Results
 import App.Controller as Controller
@@ -49,7 +49,7 @@ type alias Model =
     { flags : Flags
     , navigation : Navigation
     , configuration : Configuration.Model
-    , instances : Instances.Model
+    , nodes : Nodes.Model
     , error : Maybe String
     , settings : Settings.Model
     , collapsedSidebar : Bool
@@ -57,7 +57,7 @@ type alias Model =
     }
 
 
--- These Instances model should probably moved in to their own files
+-- These Nodes model should probably moved in to their own files
 -- at some point
 
 type Detail
@@ -78,7 +78,7 @@ type Msg
     | LinkClicked Browser.UrlRequest
     | UrlChanged Url.Url
     | ConfigurationMsg Configuration.Msg
-    | InstancesMsg Instances.Msg
+    | NodesMsg Nodes.Msg
     | ControllerMsg Controller.Msg
     | PodMsg Pod.Msg
     | ContainerMsg Container.Msg
@@ -117,12 +117,12 @@ update msg ({ flags, navigation } as model) =
             , Cmd.none
             )
 
-        InstancesMsg instancesMsg ->
+        NodesMsg nodesMsg ->
             let
                 msgWithCmd =
-                    Instances.update instancesMsg model.instances
+                    Nodes.update nodesMsg model.nodes
             in
-            ( { model | instances = first msgWithCmd }, Cmd.map InstancesMsg (second msgWithCmd))
+            ( { model | nodes = first msgWithCmd }, Cmd.map NodesMsg (second msgWithCmd))
 
         ConfigurationMsg configurationMsg ->
             ( { model | configuration = Configuration.update configurationMsg model.configuration }, Cmd.none )
@@ -144,15 +144,15 @@ update msg ({ flags, navigation } as model) =
                 settingsState = first msgWithCmd     
 
                 oses = (List.map (\item -> Tuple.first item) (Multiselect.getSelectedValues settingsState.excludedSystems))
-                instancesExclude = (List.map (\item -> Tuple.first item) (Multiselect.getSelectedValues settingsState.excludedInstances))
+                nodesExclude = (List.map (\item -> Tuple.first item) (Multiselect.getSelectedValues settingsState.excludedNodes))
                 regionsInclude = (List.map (\item -> Tuple.first item) (Multiselect.getSelectedValues settingsState.includedRegions))
-                instances2 = Instances.update (Instances.SetFilters (Instances.OS) oses) model.instances
-                instances3 = Instances.update (Instances.SetFilters (Instances.InstanceType) instancesExclude) (Tuple.first instances2)
-                instances4 = Instances.update (Instances.SetFilters (Instances.Region) regionsInclude) (Tuple.first instances3)
-                instances5 = Instances.update (Instances.SetPreferredPricing settingsState.preferredPricing) (Tuple.first instances4)
-                instances = Tuple.first instances5
+                nodes2 = Nodes.update (Nodes.SetFilters (Nodes.OS) oses) model.nodes
+                nodes3 = Nodes.update (Nodes.SetFilters (Nodes.NodeType) nodesExclude) (Tuple.first nodes2)
+                nodes4 = Nodes.update (Nodes.SetFilters (Nodes.Region) regionsInclude) (Tuple.first nodes3)
+                nodes5 = Nodes.update (Nodes.SetPreferredPricing settingsState.preferredPricing) (Tuple.first nodes4)
+                nodes = Tuple.first nodes5
             in
-            ( { model | settings = first msgWithCmd, instances = instances }, Cmd.map SettingsMsg (second msgWithCmd) )
+            ( { model | settings = first msgWithCmd, nodes = nodes }, Cmd.map SettingsMsg (second msgWithCmd) )
 
         ToggleSidebar ->
             ( { model | collapsedSidebar = not model.collapsedSidebar }, Cmd.none )     
@@ -268,7 +268,7 @@ viewResultsColumn model =
     in
     Grid.col [ gridSize, Col.attrs [ class "p-0" ] ]
              [ Maybe.map viewError model.error |> Maybe.withDefault (span [] [])
-                , Results.view (Results.Model model.configuration model.instances model.settings model.viewportSize model.collapsedSidebar)
+                , Results.view (Results.Model model.configuration model.nodes model.settings model.viewportSize model.collapsedSidebar)
              ]
 
 
@@ -330,7 +330,7 @@ viewNavbar model =
         |> Navbar.brand [ href "/", class "text-center", class "col-sm-3", class "col-md-3", class "mr-0", class "p-2" ]
             [ img [ src (model.flags.basePath ++ "ec2.svg"), class "logo" ] [], text "Cluster Prophet" ]
         |> Navbar.customItems
-            [ Navbar.textItem [ Spacing.p2Sm, class "muted" ] [ text ("Loaded " ++ (String.fromInt <| List.length model.instances.instances) ++ " total instances") ]
+            [ Navbar.textItem [ Spacing.p2Sm, class "muted" ] [ text ("Loaded " ++ (String.fromInt <| List.length model.nodes.nodes) ++ " total nodes") ]
             ]
         |> Navbar.view model.navigation.navbarState
 
@@ -345,7 +345,7 @@ subscriptions model =
     Sub.batch
         [ Navbar.subscriptions model.navigation.navbarState NavbarMsg
         , Sub.map SettingsMsg <| Settings.subscriptions model.settings
-        , Sub.map InstancesMsg <| Instances.subscriptions model.instances
+        , Sub.map NodesMsg <| Nodes.subscriptions model.nodes
         , BrowserEvent.onResize (\w h -> ViewportResize w h)
         ]
 
@@ -369,13 +369,13 @@ init ({ basePath } as flags) url key =
             , currentDetail = urlToDetail basePath url
             }
       , configuration = Configuration.init
-      , instances = Instances.init
+      , nodes = Nodes.init
       , error = Nothing
       , settings = Settings.init
       , collapsedSidebar = False
       , viewportSize = (0, 0)
       }
-    , Cmd.batch [ navbarCmd, Instances.requestInstances ( Instances.defaultRegion, "", Instances.numInstancesBatched ) ]
+    , Cmd.batch [ navbarCmd, Nodes.requestNodes ( Nodes.defaultRegion, "", Nodes.numNodesBatched ) ]
     )
 
 
