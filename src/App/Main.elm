@@ -91,9 +91,9 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg ({ flags, navigation } as model) =
     case msg of
         NavbarMsg state ->
-            let
-                _ = Debug.log "Nav" state
-            in
+            -- let
+            --    _ = Debug.log "Nav" state
+            -- in
             ( { model
                 | navigation = { navigation | navbarState = state }
               }

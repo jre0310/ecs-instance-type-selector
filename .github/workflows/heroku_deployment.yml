@@ -12,6 +12,6 @@ jobs:
       - uses: akhileshns/heroku-deploy@v3.4.6 # This is the action
         with:
           heroku_api_key: ${{secrets.HEROKU_API_KEY}}
-          heroku_app_name: ${{secrets.HEROKU_APP_NAME}} #Must be unique in Heroku
-          heroku_email: ${{secrets.HEROKU_EMAIL}}
+          heroku_app_name: "still-caverns-26481" #Must be unique in Heroku
+          heroku_email: "jre0310@gmail.com"
           usedocker: true

@@ -67,9 +67,9 @@ getSuggestedNodes model =
         memory = round <| visualization.height
         output = case model.settings.optimizeOrder of
             Nodes.RegionsThenBox -> 
-                let
-                    _ = Debug.log "Test" "If you're reading this, don't forget to fix Results.getSuggestedNodes"
-                in
+                -- let
+                --    _ = Debug.log "Test" "If you're reading this, don't forget to fix Results.getSuggestedNodes"
+                -- in
                 List.map -- TODO: HACK: PLZ FIX?? HOW DO REGION FIRST??
                     (\ region -> 
                         -- TODO: Need to figure out what best node is to ensure we duplicate? How do we choose this?

@@ -134,9 +134,9 @@ update msg model =
             ( {model | nodes = model.nodes ++ simplified}, nextCommand )
 
         LoadNodes (Err err) ->
-            let
-                _ = Debug.log "Node Load Error" err
-            in
+            -- let
+            --    _ = Debug.log "Node Load Error" err
+            -- in
             ( model, Cmd.none )
 
         SetFilters filterType filterData ->
