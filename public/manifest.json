@@ -1,6 +1,6 @@
 {
-  "short_name": "ECS Instance Type Selector",
-  "name": "Identify cheapest AWS EC2 cluster instance configurations.",
+  "short_name": "K8s Node Type Selector",
+  "name": "Identify cheapest AWS EC2 / Azure VM cluster node configurations.",
   "icons": [
     {
       "src": "favicon.ico",

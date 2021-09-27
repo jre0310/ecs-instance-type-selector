@@ -131,6 +131,22 @@ body {
   font-weight: bold;
 }
 
+.priceList > li {
+  list-style-type: none;
+  margin-bottom: 0.75em;
+}
+
+.priceList > li > ul > li {
+  list-style-type: none;
+}
+
+
+.priceList > li::before {
+  content: "► ";
+  color: rgb(156, 156, 156);
+  text-indent: -5px;
+}
+
 .feather {
     vertical-align: middle;
     display: inline-block;
@@ -145,4 +161,9 @@ body {
 
 .clickable {
   cursor: pointer;
+}
+
+.subtle {
+  color: #b4b4b4;
+  font-size: 10px;
 }

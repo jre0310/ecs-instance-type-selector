@@ -1,4 +1,4 @@
-module App.Util exposing (initRegionsMultiselect, showIf, toInt, formatMegabytes, viewColumnTitle, viewFormCheckbox, viewFormLabel, viewFormRowSlider, randomColorString)
+module App.Util exposing (showIf, toInt, formatMegabytes, viewColumnTitle, viewFormCheckbox, viewFormLabel, viewFormRowSlider, randomColorString)
 
 import Random
 import App.Constants as Constants
@@ -7,9 +7,9 @@ import Bootstrap.Form.Checkbox as Checkbox
 import Bootstrap.Grid.Col as Col
 import Html exposing (..)
 import Html.Attributes exposing (..)
-import Html.Events exposing (onInput)
+import Html.Events exposing (onInput, on)
 import Multiselect
-
+import Json.Decode as Json
 
 viewColumnTitle : String -> Html msg
 viewColumnTitle title =
@@ -47,11 +47,14 @@ viewFormRowSlider label sublabel val min max step msg =
     Form.row []
         [ Form.colLabel [ Col.sm3 ] [ text label ]
         , Form.col [ Col.sm9 ]
-            [ input [ type_ "range", class "form-control-range", Html.Attributes.min <| String.fromInt min, Html.Attributes.max <| String.fromInt max, Html.Attributes.step <| String.fromInt step, value <| String.fromInt val, onInput msg ] []
+            [ input [ type_ "range", class "form-control-range", Html.Attributes.min <| String.fromInt min, Html.Attributes.max <| String.fromInt max, Html.Attributes.step <| String.fromInt step, value <| String.fromInt val, onChange msg ] []
             , Form.help [] [ text sublabel ]
             ]
         ]
 
+onChange : (String -> msg) -> Attribute msg
+onChange handler = 
+  on "change" <| Json.map handler <| Json.at ["target", "value"] Json.string
 
 viewFormLabel : String -> String -> String -> Html msg
 viewFormLabel label sublabel val =
@@ -72,11 +75,6 @@ viewFormCheckbox label sublabel checked msg =
             , showIf (sublabel /= "") (Form.help [] [ text sublabel ])
             ]
         ]
-
-
-initRegionsMultiselect : Multiselect.Model
-initRegionsMultiselect =
-    Multiselect.initModel (List.map (\region -> ( region.regionName, region.displayName )) Constants.allRegions) "mselect"
 
 
 randomColorString : Random.Seed -> String

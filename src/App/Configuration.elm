@@ -1,8 +1,7 @@
-module App.Configuration exposing (Cluster, Container, Containers, Services, Daemon, Daemons, Model, Msg(..), PackingStrategy(..), Service, Clusters, PricingFilter(..), getContainers, init, update, view)
+module App.Configuration exposing (Cluster, Container, Containers, Controllers, Daemon, Daemons, Model, Msg(..), PackingStrategy(..), Controller, Clusters, PricingFilter(..), getContainers, init, update, view)
 
 -- This is probably the only real "messy" file, could do with some refactoring and clean up
 
-import App.Constants exposing (RegionRecord, allRegions)
 import App.Util as Util
 import Bootstrap.Button as Button
 import Bootstrap.ListGroup as ListGroup
@@ -20,16 +19,16 @@ import Random
 
 init : Model
 init =
-    { clusters = Dict.fromList [ ( 0, { name = "Cluster", regions = Util.initRegionsMultiselect, pricingFilter = Reserved } ) ]
-    , services = Dict.fromList [ ] 
+    { clusters = Dict.fromList [ ( 0, { name = "Cluster" } ) ]
+    , controllers = Dict.fromList [ ] 
     , containers = Dict.fromList [ ] 
     , daemons = Dict.fromList [ ]
     , autoIncrement = 0 -- Set this to 0 once we get rid of sample data
     }
 
 
-type alias Services =
-    Dict Int Service
+type alias Controllers =
+    Dict Int Controller
 
 
 type alias Clusters =
@@ -45,7 +44,7 @@ type alias Daemons =
 
 type alias Model =
     { clusters : Clusters
-    , services : Services
+    , controllers : Controllers
     , containers : Containers
     , daemons: Daemons
     , autoIncrement : Int
@@ -54,16 +53,16 @@ type alias Model =
 
 type Msg
     = AddCluster
-    | AddService Int -- ClusterId
-    | AddContainer Int -- ServiceId
+    | AddController Int -- ClusterId
+    | AddContainer Int -- ControllerId
     | AddDaemon Int -- ContainerId
     | DeleteContainer Int -- ContainerId
-    | DeleteService Int -- ServiceId
+    | DeleteController Int -- ControllerId
     | DeleteCluster Int -- ClusterId
     | DeleteDaemon Int -- DaemonId
     | ChangeContainerName Int String -- ContainerId Name
     | ChangeDaemonName Int String -- DaemonId Name
-    | ChangeServiceName Int String -- ServiceId Name
+    | ChangeControllerName Int String -- ControllerId Name
     | ChangeClusterName Int String -- ClusterId Name
 
 
@@ -74,19 +73,17 @@ type PricingFilter
 
 type alias Cluster =
     { name : String
-    , regions : Multiselect.Model
-    , pricingFilter : PricingFilter
     }
 
 
-type alias Service =
+type alias Controller =
     { name : String
     , clusterId : Int
     , scalingTarget : Int
     , packingStrategy : PackingStrategy
-    , minTasks : Int
-    , maxTasks : Int
-    , nominalTasks: Int
+    , minPods : Int
+    , maxPods : Int
+    , nominalPods: Int
     }
 
 
@@ -98,7 +95,7 @@ type PackingStrategy
 type alias Container =
     { name : String
     , color : String
-    , serviceId : Int
+    , controllerId : Int
     , cpuShare : Int
     , memory : Int
     , ioops : Int
@@ -125,19 +122,19 @@ update : Msg -> Model -> Model
 update msg model =
     case msg of
         AddCluster ->
-            { model | clusters = model.clusters |> Dict.insert model.autoIncrement { name = "Cluster", regions = Util.initRegionsMultiselect, pricingFilter = Reserved }, autoIncrement = generateId model }
+            { model | clusters = model.clusters |> Dict.insert model.autoIncrement { name = "Cluster"}, autoIncrement = generateId model }
 
-        AddService clusterId ->
-            { model | services = model.services |> Dict.insert model.autoIncrement { name = "Service", clusterId = clusterId, scalingTarget = 0, packingStrategy = ByCPUShares, minTasks = 1, maxTasks = 2, nominalTasks = 1 }, autoIncrement = generateId model }
+        AddController clusterId ->
+            { model | controllers = model.controllers |> Dict.insert model.autoIncrement { name = "Controller", clusterId = clusterId, scalingTarget = 0, packingStrategy = ByCPUShares, minPods = 1, maxPods = 2, nominalPods = 1 }, autoIncrement = generateId model }
 
-        AddContainer serviceId ->
+        AddContainer controllerId ->
             let
                 containerId = generateId model
                 daemonId = generateId model
                 daemons = model.daemons |> Dict.insert daemonId {name = "Daemon", containerId = containerId, cpuShare = 0, memory = 0}
             in
             
-            { model | containers = model.containers |> Dict.insert containerId { name = "Container", color = Util.randomColorString (Random.initialSeed model.autoIncrement), serviceId = serviceId, cpuShare = 128, memory = 4000, ioops = 128, useEBS = True, bandwidth = 20, showExtraMemory = False }, daemons = daemons, autoIncrement = containerId + 1 }
+            { model | containers = model.containers |> Dict.insert containerId { name = "Container", color = Util.randomColorString (Random.initialSeed model.autoIncrement), controllerId = controllerId, cpuShare = 128, memory = 4000, ioops = 128, useEBS = True, bandwidth = 20, showExtraMemory = False }, daemons = daemons, autoIncrement = containerId + 1 }
 
         AddDaemon containerId -> 
             { model | daemons = model.daemons |> Dict.insert model.autoIncrement {name = "Daemon", containerId = containerId, cpuShare = 0, memory = 0}, autoIncrement = generateId model }
@@ -148,29 +145,29 @@ update msg model =
         DeleteDaemon daemonId -> 
             { model | daemons = model.daemons |> Dict.remove daemonId }
 
-        DeleteService serviceId ->
+        DeleteController controllerId ->
             let
                 newModel =
-                    { model | containers = model.containers |> Dict.Extra.removeWhen (\_ container -> container.serviceId == serviceId) }
+                    { model | containers = model.containers |> Dict.Extra.removeWhen (\_ container -> container.controllerId == controllerId) }
             in
-            { newModel | services = model.services |> Dict.remove serviceId }
+            { newModel | controllers = model.controllers |> Dict.remove controllerId }
 
         DeleteCluster clusterId ->
             -- This mess could use a refactor
             let
-                servicesToRemove =
-                    model.services |> Dict.filter (\_ service -> service.clusterId == clusterId)
+                controllersToRemove =
+                    model.controllers |> Dict.filter (\_ controller -> controller.clusterId == clusterId)
 
-                serviceIdsToRemove =
-                    servicesToRemove |> Dict.keys
+                controllerIdsToRemove =
+                    controllersToRemove |> Dict.keys
 
                 newContainers =
-                    model.containers |> Dict.Extra.removeWhen (\_ container -> List.length (List.filter (\item -> item == container.serviceId) serviceIdsToRemove) > 0)
+                    model.containers |> Dict.Extra.removeWhen (\_ container -> List.length (List.filter (\item -> item == container.controllerId) controllerIdsToRemove) > 0)
 
-                newServices =
-                    model.services |> Dict.Extra.removeWhen (\_ service -> service.clusterId == clusterId)
+                newControllers =
+                    model.controllers |> Dict.Extra.removeWhen (\_ controller -> controller.clusterId == clusterId)
             in
-            { model | containers = newContainers, services = newServices, clusters = model.clusters |> Dict.remove clusterId }
+            { model | containers = newContainers, controllers = newControllers, clusters = model.clusters |> Dict.remove clusterId }
 
         ChangeContainerName id value ->
             { model | containers = Dict.update id (Maybe.map (\container -> { container | name = value })) model.containers }
@@ -178,8 +175,8 @@ update msg model =
         ChangeDaemonName id value -> 
             { model | daemons = Dict.update id (Maybe.map (\daemon -> { daemon | name = value })) model.daemons}
 
-        ChangeServiceName id value ->
-            { model | services = Dict.update id (Maybe.map (\service -> { service | name = value })) model.services }
+        ChangeControllerName id value ->
+            { model | controllers = Dict.update id (Maybe.map (\controller -> { controller | name = value })) model.controllers }
             
         ChangeClusterName id value ->
             { model | clusters = Dict.update id (Maybe.map (\cluster -> { cluster | name = value })) model.clusters }
@@ -194,7 +191,7 @@ view model =
         , viewClusters model
         , hr [] []
         , ListGroup.custom
-            [ simpleListItem "Global Settings" FeatherIcons.settings [ href "settings" ]
+            [ simpleListItem "Filters" FeatherIcons.filter [ href "settings" ]
             , simpleListItem "Export JSON" FeatherIcons.share [ href "#" ]
             , simpleListItem "Load JSON" FeatherIcons.download [ href "#" ]
             ]
@@ -223,64 +220,64 @@ viewClusterItem model clusterTuple =
                 [ div [ Flex.block, Flex.justifyBetween, Size.w100 ]
                     [ span [ class "pt-1" ] [ FeatherIcons.share2 |> FeatherIcons.withSize 19 |> FeatherIcons.toHtml [], input [ type_ "text", class "editable-label", value cluster.name, onChange (ChangeClusterName id)] [] ]
                     , div []
-                        [ span [] [ Button.button [ Button.outlineSecondary, Button.small, Button.attrs [ Html.Events.Extra.onClickPreventDefaultAndStopPropagation (AddService id) ] ] [ FeatherIcons.plus |> FeatherIcons.withSize 16 |> FeatherIcons.withClass "empty-button" |> FeatherIcons.toHtml [], text "" ] ]
+                        [ span [] [ Button.button [ Button.outlineSecondary, Button.small, Button.attrs [ Html.Events.Extra.onClickPreventDefaultAndStopPropagation (AddController id) ] ] [ FeatherIcons.plus |> FeatherIcons.withSize 16 |> FeatherIcons.withClass "empty-button" |> FeatherIcons.toHtml [], text "" ] ]
 
                         -- needed to prevent the onClick of the list item from firing, and rerouting us to a non-existant thingy
                         ]
                     ]
                 ]
           ]
-        , viewServices model (getServices id model.services)
+        , viewControllers model (getControllers id model.controllers)
         ]
 
 
-getServices : Int -> Services -> Services
-getServices clusterId services =
+getControllers : Int -> Controllers -> Controllers
+getControllers clusterId controllers =
     let
-        associateService _ service =
-            if service.clusterId == clusterId then
-                Just service
+        associateController _ controller =
+            if controller.clusterId == clusterId then
+                Just controller
 
             else
                 Nothing
     in
-    services |> filterMap associateService
+    controllers |> filterMap associateController
 
 
-viewServices : Model -> Services -> List (ListGroup.CustomItem Msg)
-viewServices model services =
-    List.concatMap (viewServiceItem model) (Dict.toList services)
+viewControllers : Model -> Controllers -> List (ListGroup.CustomItem Msg)
+viewControllers model controllers =
+    List.concatMap (viewControllerItem model) (Dict.toList controllers)
 
 
-viewServiceItem : Model -> ( Int, Service ) -> List (ListGroup.CustomItem Msg)
-viewServiceItem model serviceTuple =
+viewControllerItem : Model -> ( Int, Controller ) -> List (ListGroup.CustomItem Msg)
+viewControllerItem model controllerTuple =
     let
         id =
-            first serviceTuple
+            first controllerTuple
 
-        service =
-            second serviceTuple
+        controller =
+            second controllerTuple
     in
     List.concat
         [ [ ListGroup.anchor
-                [ ListGroup.attrs [ Flex.block, Flex.justifyBetween, href ("service/" ++ String.fromInt id) ] ]
+                [ ListGroup.attrs [ Flex.block, Flex.justifyBetween, href ("controller/" ++ String.fromInt id) ] ]
                 [ div [ Flex.block, Flex.justifyBetween, Size.w100 ]
-                    [ span [ class "pt-1" ] [ FeatherIcons.server |> FeatherIcons.withSize 19 |> FeatherIcons.toHtml [], input [ type_ "text", class "editable-label", value service.name, onChange (ChangeServiceName id)] []]
-                    , span [ class "text-muted", Html.Events.Extra.onClickPreventDefaultAndStopPropagation (DeleteService id) ] [ FeatherIcons.trash2 |> FeatherIcons.withSize 16 |> FeatherIcons.toHtml [] ]
+                    [ span [ class "pt-1" ] [ FeatherIcons.server |> FeatherIcons.withSize 19 |> FeatherIcons.toHtml [], input [ type_ "text", class "editable-label", value controller.name, onChange (ChangeControllerName id)] []]
+                    , span [ class "text-muted", Html.Events.Extra.onClickPreventDefaultAndStopPropagation (DeleteController id) ] [ FeatherIcons.trash2 |> FeatherIcons.withSize 16 |> FeatherIcons.toHtml [] ]
                     ]
                 ]
           ]
-        , viewTaskItem id
+        , viewPodItem id
         , viewContainers (getContainers id model.containers)
         ]
 
 
-viewTaskItem : Int -> List (ListGroup.CustomItem Msg)
-viewTaskItem id =
+viewPodItem : Int -> List (ListGroup.CustomItem Msg)
+viewPodItem id =
     [ ListGroup.anchor
-        [ ListGroup.attrs [ Flex.block, Flex.justifyBetween, style "padding-left" "40px", href ("task/" ++ String.fromInt id) ] ]
+        [ ListGroup.attrs [ Flex.block, Flex.justifyBetween, style "padding-left" "40px", href ("pod/" ++ String.fromInt id) ] ]
         [ div [ Flex.block, Flex.justifyBetween, Size.w100 ]
-            [ span [ class "pt-1" ] [ FeatherIcons.clipboard |> FeatherIcons.withSize 19 |> FeatherIcons.toHtml [], text "Tasks" ]
+            [ span [ class "pt-1" ] [ FeatherIcons.clipboard |> FeatherIcons.withSize 19 |> FeatherIcons.toHtml [], text "Pods" ]
             , span [] [ Button.button [ Button.outlineSecondary, Button.small, Button.attrs [ Html.Events.Extra.onClickPreventDefaultAndStopPropagation (AddContainer id) ] ] [ FeatherIcons.plus |> FeatherIcons.withSize 16 |> FeatherIcons.withClass "empty-button" |> FeatherIcons.toHtml [], text "" ] ]
             ]
         ]
@@ -288,10 +285,10 @@ viewTaskItem id =
 
 
 getContainers : Int -> Containers -> Containers
-getContainers serviceId containers =
+getContainers controllerId containers =
     let
         associateContainer _ container =
-            if container.serviceId == serviceId then
+            if container.controllerId == controllerId then
                 Just container
 
             else

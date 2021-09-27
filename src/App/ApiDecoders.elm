@@ -1,6 +1,6 @@
-module App.ApiDecoders exposing (Attributes, PriceListing, Product, ProductsResponse, productsResponseDecoder, PriceDimension, PricePerUnit, Term)
+module App.ApiDecoders exposing (Attributes, PriceListing, Product, ProductsResponse, TermAttributes, productsResponseDecoder, PriceDimension, PricePerUnit, Term)
 
-import Json.Decode exposing (Decoder, map, list, string, succeed, keyValuePairs)
+import Json.Decode exposing (Decoder, map, list, string, succeed, keyValuePairs, fail, field)
 import Json.Decode.Pipeline exposing (hardcoded, required, optional)
 
 
@@ -38,7 +38,7 @@ type alias Product =
 
 type alias Attributes =
     { memory : String
-    , instanceType : String
+    , nodeType : String
     , location : String
     , operatingSystem : String
     , vCPU : String
@@ -53,8 +53,23 @@ type alias Terms =
 type alias Term =
     { name: String,
       priceDimensions: List PriceDimension,
-      offerTermCode: String 
+      offerTermCode: String,
+      termAttributes: TermAttributes
     }
+
+type alias TermAttributes =
+    { leaseContractLength: String
+    , purchaseOption: String
+    }
+    
+-- type LeaseContractLength
+--     = OneYear
+--     | ThreeYear
+    
+-- type PurchaseOption
+--     = NoUpfront
+--     | AllUpfront
+--     | PartialUpfront
 
 ---- DECODERS ----
 
@@ -84,7 +99,7 @@ attributesDecoder : Decoder Attributes
 attributesDecoder =
     succeed Attributes
         |> optional "memory" string ""
-        |> optional "instanceType" string "Unknown"
+        |> optional "nodeType" string "Unknown"
         |> optional "location" string "Unknown"
         |> optional "operatingSystem" string "Unknown"
         |> optional "vcpu" string ""
@@ -114,6 +129,14 @@ termDecoder =
         |> hardcoded ""
         |> required "priceDimensions" unknownPriceDimensionsKeyDecoder
         |> required "offerTermCode" string
+        |> optional "termAttributes" termAttributesDecoder (TermAttributes "" "")
+
+
+termAttributesDecoder : Decoder TermAttributes
+termAttributesDecoder =
+    succeed TermAttributes
+        |> optional "LeaseContractLength" string ""
+        |> optional "PurchaseOption" string ""
 
 
 -- Price Dimensions

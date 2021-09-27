@@ -2,12 +2,12 @@ module App.Main exposing (..)
 
 import App.Cluster as Cluster
 import App.Configuration as Configuration
-import App.Instances as Instances
+import App.Nodes as Nodes
 import App.Container as Container
 import App.Results as Results
-import App.Service as Service
+import App.Controller as Controller
 import App.Settings as Settings exposing (update, Msg)
-import App.Task as Task
+import App.Pod as Pod
 import App.Util as Util
 import Bootstrap.Alert as Alert
 import Bootstrap.Button as Button
@@ -17,6 +17,7 @@ import Bootstrap.Grid.Row as Row
 import Bootstrap.Navbar as Navbar
 import Bootstrap.Utilities.Spacing as Spacing
 import Browser exposing (UrlRequest(..), application, document)
+import Browser.Events as BrowserEvent
 import Browser.Navigation as Nav
 import Dict exposing (Dict)
 import Html exposing (..)
@@ -48,21 +49,22 @@ type alias Model =
     { flags : Flags
     , navigation : Navigation
     , configuration : Configuration.Model
-    , instances : Instances.Model
+    , nodes : Nodes.Model
     , error : Maybe String
     , settings : Settings.Model
     , collapsedSidebar : Bool
+    , viewportSize: (Int, Int)
     }
 
 
--- These Instances model should probably moved in to their own files
+-- These Nodes model should probably moved in to their own files
 -- at some point
 
 type Detail
     = None
     | Cluster Int
-    | Service Int
-    | Task Int
+    | Controller Int
+    | Pod Int
     | Container Int
     | Settings
 
@@ -76,12 +78,12 @@ type Msg
     | LinkClicked Browser.UrlRequest
     | UrlChanged Url.Url
     | ConfigurationMsg Configuration.Msg
-    | InstancesMsg Instances.Msg
-    | ClusterMsg Cluster.Msg
-    | ServiceMsg Service.Msg
-    | TaskMsg Task.Msg
+    | NodesMsg Nodes.Msg
+    | ControllerMsg Controller.Msg
+    | PodMsg Pod.Msg
     | ContainerMsg Container.Msg
     | SettingsMsg Settings.Msg
+    | ViewportResize Int Int
     | ToggleSidebar
 
 
@@ -89,6 +91,9 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg ({ flags, navigation } as model) =
     case msg of
         NavbarMsg state ->
+            let
+                _ = Debug.log "Nav" state
+            in
             ( { model
                 | navigation = { navigation | navbarState = state }
               }
@@ -112,24 +117,21 @@ update msg ({ flags, navigation } as model) =
             , Cmd.none
             )
 
-        InstancesMsg instancesMsg ->
+        NodesMsg nodesMsg ->
             let
                 msgWithCmd =
-                    Instances.update instancesMsg model.instances
+                    Nodes.update nodesMsg model.nodes
             in
-            ( { model | instances = first msgWithCmd }, Cmd.map InstancesMsg (second msgWithCmd))
+            ( { model | nodes = first msgWithCmd }, Cmd.map NodesMsg (second msgWithCmd))
 
         ConfigurationMsg configurationMsg ->
             ( { model | configuration = Configuration.update configurationMsg model.configuration }, Cmd.none )
 
-        ClusterMsg clusterMsg ->
-            ( { model | configuration = Cluster.update clusterMsg model.configuration }, Cmd.none )
+        ControllerMsg controllerMsg ->
+            ( { model | configuration = Controller.update controllerMsg model.configuration }, Cmd.none )
 
-        ServiceMsg serviceMsg ->
-            ( { model | configuration = Service.update serviceMsg model.configuration }, Cmd.none )
-
-        TaskMsg taskMsg ->
-            ( { model | configuration = Task.update taskMsg model.configuration }, Cmd.none )
+        PodMsg podMsg ->
+            ( { model | configuration = Pod.update podMsg model.configuration }, Cmd.none )
 
         ContainerMsg containerMsg ->
             ( { model | configuration = Container.update containerMsg model.configuration }, Cmd.none )
@@ -142,16 +144,21 @@ update msg ({ flags, navigation } as model) =
                 settingsState = first msgWithCmd     
 
                 oses = (List.map (\item -> Tuple.first item) (Multiselect.getSelectedValues settingsState.excludedSystems))
-                instancesExclude = (List.map (\item -> Tuple.first item) (Multiselect.getSelectedValues settingsState.excludedInstances))
-                instances2 = Instances.update (Instances.SetFilters (Instances.OS) oses) model.instances
-                instances3 = Instances.update (Instances.SetFilters (Instances.InstanceType) instancesExclude) (Tuple.first instances2)
-                instances = Tuple.first instances3
-                --instances = Instances.updateWithFilters model.settings
+                nodesExclude = (List.map (\item -> Tuple.first item) (Multiselect.getSelectedValues settingsState.excludedNodes))
+                regionsInclude = (List.map (\item -> Tuple.first item) (Multiselect.getSelectedValues settingsState.includedRegions))
+                nodes2 = Nodes.update (Nodes.SetFilters (Nodes.OS) oses) model.nodes
+                nodes3 = Nodes.update (Nodes.SetFilters (Nodes.NodeType) nodesExclude) (Tuple.first nodes2)
+                nodes4 = Nodes.update (Nodes.SetFilters (Nodes.Region) regionsInclude) (Tuple.first nodes3)
+                nodes5 = Nodes.update (Nodes.SetPreferredPricing settingsState.preferredPricing) (Tuple.first nodes4)
+                nodes = Tuple.first nodes5
             in
-            ( { model | settings = first msgWithCmd, instances = instances }, Cmd.map SettingsMsg (second msgWithCmd) )
+            ( { model | settings = first msgWithCmd, nodes = nodes }, Cmd.map SettingsMsg (second msgWithCmd) )
 
         ToggleSidebar ->
-            ( { model | collapsedSidebar = not model.collapsedSidebar }, Cmd.none )        
+            ( { model | collapsedSidebar = not model.collapsedSidebar }, Cmd.none )     
+            
+        ViewportResize width height ->
+            ( { model | viewportSize = (width, height)}, Cmd.none )
 
 
 urlToDetail : String -> Url -> Detail
@@ -175,9 +182,9 @@ urlParser =
     Url.oneOf
         [ Url.map None Url.top
         , Url.map Cluster (Url.s "cluster" </> Url.int)
-        , Url.map Service (Url.s "service" </> Url.int)
+        , Url.map Controller (Url.s "controller" </> Url.int)
         , Url.map Container (Url.s "container" </> Url.int)
-        , Url.map Task (Url.s "task" </> Url.int)
+        , Url.map Pod (Url.s "pod" </> Url.int)
         , Url.map Settings (Url.s "settings")
         ]
 
@@ -261,7 +268,7 @@ viewResultsColumn model =
     in
     Grid.col [ gridSize, Col.attrs [ class "p-0" ] ]
              [ Maybe.map viewError model.error |> Maybe.withDefault (span [] [])
-                , Results.view (Results.Model model.configuration model.instances)
+                , Results.view (Results.Model model.configuration model.nodes model.settings model.viewportSize model.collapsedSidebar)
              ]
 
 
@@ -270,17 +277,17 @@ viewDetail model =
     case model.navigation.currentDetail of
         Cluster id ->
             Dict.get id model.configuration.clusters
-                |> Maybe.map (\value -> Html.map ClusterMsg (Cluster.view id value))
+                |> Maybe.map (\value -> Cluster.view id value)
                 |> Maybe.withDefault viewNotFoundDetail
 
-        Service id ->
-            Dict.get id model.configuration.services
-                |> Maybe.map (\value -> Html.map ServiceMsg (Service.view id value))
+        Controller id ->
+            Dict.get id model.configuration.controllers
+                |> Maybe.map (\value -> Html.map ControllerMsg (Controller.view id value))
                 |> Maybe.withDefault viewNotFoundDetail
 
-        Task id ->
-            Dict.get id model.configuration.services
-                |> Maybe.map (\value -> Html.map TaskMsg (Task.view id value (Configuration.getContainers id model.configuration.containers)))
+        Pod id ->
+            Dict.get id model.configuration.controllers
+                |> Maybe.map (\value -> Html.map PodMsg (Pod.view id value (Configuration.getContainers id model.configuration.containers)))
                 |> Maybe.withDefault viewNotFoundDetail
 
         Container id ->
@@ -298,7 +305,7 @@ viewDetail model =
 viewNoneDetail : Html Msg
 viewNoneDetail =
     span [ class "text-muted align-middle" ]
-        [ text "Nothing here. Select a service, task, or container from the left sidebar to start configuring." ]
+        [ text "Nothing here. Select a controller, pod, or container from the left sidebar to start configuring." ]
 
 
 viewNotFoundDetail : Html Msg
@@ -323,7 +330,7 @@ viewNavbar model =
         |> Navbar.brand [ href "/", class "text-center", class "col-sm-3", class "col-md-3", class "mr-0", class "p-2" ]
             [ img [ src (model.flags.basePath ++ "ec2.svg"), class "logo" ] [], text "Cluster Prophet" ]
         |> Navbar.customItems
-            [ Navbar.textItem [ Spacing.p2Sm, class "muted" ] [ text ("Loaded " ++ (String.fromInt <| List.length model.instances.instances) ++ " possible instances") ]
+            [ Navbar.textItem [ Spacing.p2Sm, class "muted" ] [ text ("Loaded " ++ (String.fromInt <| List.length model.nodes.nodes) ++ " total nodes") ]
             ]
         |> Navbar.view model.navigation.navbarState
 
@@ -338,7 +345,8 @@ subscriptions model =
     Sub.batch
         [ Navbar.subscriptions model.navigation.navbarState NavbarMsg
         , Sub.map SettingsMsg <| Settings.subscriptions model.settings
-        , Sub.map InstancesMsg <| Instances.subscriptions model.instances
+        , Sub.map NodesMsg <| Nodes.subscriptions model.nodes
+        , BrowserEvent.onResize (\w h -> ViewportResize w h)
         ]
 
 
@@ -361,12 +369,13 @@ init ({ basePath } as flags) url key =
             , currentDetail = urlToDetail basePath url
             }
       , configuration = Configuration.init
-      , instances = Instances.init
+      , nodes = Nodes.init
       , error = Nothing
       , settings = Settings.init
       , collapsedSidebar = False
+      , viewportSize = (0, 0)
       }
-    , Cmd.batch [ navbarCmd, Instances.requestInstances ( Instances.defaultRegion, "", Instances.numInstancesBatched ) ]
+    , Cmd.batch [ navbarCmd, Nodes.requestNodes ( Nodes.defaultRegion, "", Nodes.numNodesBatched ) ]
     )
 
 
