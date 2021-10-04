@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# bin/release BUILD_DIR
+
+# used for inline heroku buildpack
+
+echo "--- {}"

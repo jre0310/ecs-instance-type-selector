@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# bin/compile <build-dir> <cache-dir> <env-dir>
+
+# used for inline heroku buildpack
+
+set -eo pipefail
+
+indent() {
+  sed -u 's/^/       /'
+}
+
+mkdir -p "$1" "$2"
+build=$(cd "$1/" && pwd)
+cache=$(cd "$2/" && pwd)
+buildpack=$(cd "$(dirname $0)/.." && pwd)
+
+# Install elm
+mkcd()
+{
+    mkdir -p $1 && cd $1
+}
+
+echo "export PATH=${cache}/bin/elm:$PATH" >> $buildpack/export
+PATH=${cache}/bin/elm:$PATH
+
+mkcd ${cache}/bin/elm
+
+echo "-----> Retrieving elm"
+curl -sL -o elm.gz https://github.com/elm/compiler/releases/download/0.19.1/binary-for-linux-64-bit.gz
+gunzip -f elm.gz
+chmod +x elm
+echo "Successfully installed elm version $(elm --version)" | indent
+
+# Build elm-app
+cd ${build}
+
+echo "-----> Building with elm-app"
+
+elm-app build | indent
