@@ -58,7 +58,6 @@ type alias Model =
 
 
 -- These Nodes model should probably moved in to their own files
--- at some point
 
 type Detail
     = None
