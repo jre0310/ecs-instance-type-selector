@@ -1,0 +1,30 @@
+{
+  "name": "instancetypeselector",
+  "version": "1.0.0",
+  "description": "shows the most cost effective aws pricing for virtualization",
+  "main": "elmapp.config.js",
+  "directories": {
+    "test": "tests"
+  },
+  "dependencies": {},
+  "devDependencies": {},
+  "scripts": {
+    "test": "\\"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jre0310/ecs-instance-type-selector.git"
+  },
+  "keywords": [
+    "ecs",
+    "instance",
+    "type",
+    "selector"
+  ],
+  "author": "Raul Elguezabal",
+  "license": "UNLICENSED",
+  "bugs": {
+    "url": "https://github.com/jre0310/ecs-instance-type-selector/issues"
+  },
+  "homepage": "https://github.com/jre0310/ecs-instance-type-selector#readme"
+}
