@@ -1,7 +1,9 @@
 {
-    "name": "my-awesome-package",
-    "version": "1.0.0",
-    "dependencies":
-    { "create-elm-app" : "latest"
+    "name": "create-elm-app",
+    "description": "Elm apps with zero configuration",
+    "version": "0.0.0-development",
+    "author": "Eduard Kyvenko <eduard.kyvenko@gmail.com>",
+    "bin": {
+      "elm-app": "./bin/elm-app-cli.js",
+      "create-elm-app": "./bin/create-elm-app-cli.js"
     }
-}
