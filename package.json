@@ -1,16 +1,30 @@
 {
+    "name": "instancetypeselector",
     "version": "1.0.0",
-    "summary": "TodoMVC created with Elm and elm-html",
-    "repository": "https://github.com/evancz/elm-todomvc.git",
-    "license": "BSD3",
-    "source-directories": [
-        "."
-    ],
-    "exposed-modules": [],
-    "dependencies": {
-        "elm-lang/core": "5.0.0 <= v < 6.0.0",
-        "elm-lang/dom": "1.1.1 <= v < 2.0.0",
-        "elm-lang/html": "2.0.0 <= v < 3.0.0"
+    "description": "shows the most cost effective aws pricing for virtualization",
+    "main": "elmapp.config.js",
+    "directories": {
+      "test": "tests"
     },
-    "elm-version": "0.18.0 <= v < 0.19.0"
-}
+    "dependencies": {},
+    "devDependencies": {},
+    "scripts": {
+      "test": "\\"
+    },
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/jre0310/ecs-instance-type-selector.git"
+    },
+    "keywords": [
+      "ecs",
+      "instance",
+      "type",
+      "selector"
+    ],
+    "author": "Raul Elguezabal",
+    "license": "UNLICENSED",
+    "bugs": {
+      "url": "https://github.com/jre0310/ecs-instance-type-selector/issues"
+    },
+    "homepage": "https://github.com/jre0310/ecs-instance-type-selector#readme"
+  }
