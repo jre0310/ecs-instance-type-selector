@@ -3,5 +3,5 @@
 
 # used for inline heroku buildpack
 
-echo "create-elm-app"
+echo "elm-app build"
 exit 0
