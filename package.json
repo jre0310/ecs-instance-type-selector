@@ -1,7 +1,0 @@
-{
-    "name": "ecs-instance-type-selector",
-    "version": "1.0.0",
-    "dependencies":
-    { "create-elm-app" : "latest"
-    }
-}
